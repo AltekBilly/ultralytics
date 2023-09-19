@@ -35,8 +35,7 @@ def get_line(points: list, confs: list, threshold: float = 0.5) -> tuple[tuple[f
     for num in confs:
         if num > threshold:
             count += 1
-            if count >= 2:
-                break
+            if count >= 2: break
     
     if count < 2: return None
 
@@ -126,7 +125,7 @@ def draw_corner(img: numpy.ndarray, corners: list):
         point1 = (int(point1[0] * w), int(point1[1] * h))
         cv2.line(img, point0, point1, (0,0,255), 1, cv2.LINE_AA)
 
-def write_to_txt(path:str, bboxes:Boxes, keypoints: Keypoints):
+def write_to_txt(path:str, bboxes:Boxes, keypoints: Keypoints, threshold: float):
     with open(path, 'w') as file:
         list_xywh      = bboxes.xywhn.tolist()
         list_conf      = bboxes.conf.tolist()
@@ -134,7 +133,7 @@ def write_to_txt(path:str, bboxes:Boxes, keypoints: Keypoints):
         list_kps_conf  = keypoints.conf.tolist() if keypoints.conf is not None else [[]]
         
         for i in range(len(list_xywh)):
-            if(list_conf[i]<0.8): continue
+            if(list_conf[i]<threshold): continue
             x, y, w, h = list_xywh[i]
             content = f"0 {x:.6f} {y:.6f} {w:.6f} {h:.6f}"
 
@@ -142,13 +141,16 @@ def write_to_txt(path:str, bboxes:Boxes, keypoints: Keypoints):
                 content += f" {kp[0]:.6f} {kp[1]:.6f} {list_kps_conf[i][j]*2:.6f}"
             file.write(content + "\n")
 
-def main(folder_path: str, extension: str = '.png'):
+def main(model_path:str, folder_path: str, extension: str = '.png', threshold: float = 0.5):
     all_file_paths = get_files_with_extension(folder_path, extension)
 
     # Load a model
-    model = YOLO('keypoint-l-data_augmentation-best.pt')
-
+    model = YOLO(model_path)
+    # model = YOLO('keypoint-l-best.pt')
+    model.overrides['imgsz'] = 1024
+    
     for file_path in all_file_paths:
+        print("================================")
         print(file_path)
         results = model(file_path)
         keypoints = results[0].keypoints  # Masks object
@@ -161,8 +163,7 @@ def main(folder_path: str, extension: str = '.png'):
 
 
         # filename, ext = os.path.splitext(file_path)
-        # write_to_txt(filename+".txt", boxes, keypoints)
-
+        # write_to_txt(filename+".txt", boxes, keypoints, threshold)
         # continue
 
         img = cv2.imread(file_path)
@@ -173,9 +174,10 @@ def main(folder_path: str, extension: str = '.png'):
         size = img.shape
 
         for obj_index, obj_conf in enumerate(objs_conf):
-            if obj_conf < 0.8: continue
+            if obj_conf < threshold: continue
 
-            # draw_bbox(img, boxes, obj_index, img.shape)
+            print("obj_conf:", obj_conf)
+            draw_bbox(img, boxes, obj_index, img.shape)
             # continue
 
             # 
@@ -201,5 +203,7 @@ def main(folder_path: str, extension: str = '.png'):
         if cv2.waitKey() == 27: break
 
 if __name__ == '__main__':
-    folder_path = 'C:/Users/BillyHsueh/dataset/Whiteboard-keypoints/images/val'
-    main(folder_path)
+    # model_path = 'yolov8n-pose-whiteboard-data_aug-640x640-33000-20230713.pt'
+    model_path = './runs/pose/train-keypoint-n-640x640-data_aug/weights/best.pt'
+    folder_path = 'C:/Users/BillyHsueh/dataset/Whiteboard-keypoints/images/val/altek'
+    main(model_path, folder_path, threshold=0.5)

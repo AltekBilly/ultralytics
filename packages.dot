@@ -1,0 +1,31 @@
+digraph "packages" {
+rankdir=BT
+charset="utf-8"
+"ultralytics.nn" [color="black", label="ultralytics.nn", shape="box", style="solid"];
+"ultralytics.nn.autobackend" [color="black", label="ultralytics.nn.autobackend", shape="box", style="solid"];
+"ultralytics.nn.autoshape" [color="black", label="ultralytics.nn.autoshape", shape="box", style="solid"];
+"ultralytics.nn.modules" [color="black", label="ultralytics.nn.modules", shape="box", style="solid"];
+"ultralytics.nn.modules.block" [color="black", label="ultralytics.nn.modules.block", shape="box", style="solid"];
+"ultralytics.nn.modules.conv" [color="black", label="ultralytics.nn.modules.conv", shape="box", style="solid"];
+"ultralytics.nn.modules.head" [color="black", label="ultralytics.nn.modules.head", shape="box", style="solid"];
+"ultralytics.nn.modules.transformer" [color="black", label="ultralytics.nn.modules.transformer", shape="box", style="solid"];
+"ultralytics.nn.modules.utils" [color="black", label="ultralytics.nn.modules.utils", shape="box", style="solid"];
+"ultralytics.nn.tasks" [color="black", label="ultralytics.nn.tasks", shape="box", style="solid"];
+"ultralytics.nn" -> "ultralytics.nn.tasks" [arrowhead="open", arrowtail="none"];
+"ultralytics.nn.autobackend" -> "ultralytics.nn.tasks" [arrowhead="open", arrowtail="none"];
+"ultralytics.nn.autoshape" -> "ultralytics.nn.autobackend" [arrowhead="open", arrowtail="none"];
+"ultralytics.nn.modules" -> "ultralytics.nn.modules.block" [arrowhead="open", arrowtail="none"];
+"ultralytics.nn.modules" -> "ultralytics.nn.modules.conv" [arrowhead="open", arrowtail="none"];
+"ultralytics.nn.modules" -> "ultralytics.nn.modules.head" [arrowhead="open", arrowtail="none"];
+"ultralytics.nn.modules" -> "ultralytics.nn.modules.transformer" [arrowhead="open", arrowtail="none"];
+"ultralytics.nn.modules.block" -> "ultralytics.nn.modules.conv" [arrowhead="open", arrowtail="none"];
+"ultralytics.nn.modules.block" -> "ultralytics.nn.modules.transformer" [arrowhead="open", arrowtail="none"];
+"ultralytics.nn.modules.head" -> "ultralytics.nn.modules.block" [arrowhead="open", arrowtail="none"];
+"ultralytics.nn.modules.head" -> "ultralytics.nn.modules.conv" [arrowhead="open", arrowtail="none"];
+"ultralytics.nn.modules.head" -> "ultralytics.nn.modules.transformer" [arrowhead="open", arrowtail="none"];
+"ultralytics.nn.modules.head" -> "ultralytics.nn.modules.utils" [arrowhead="open", arrowtail="none"];
+"ultralytics.nn.modules.transformer" -> "ultralytics.nn.modules.conv" [arrowhead="open", arrowtail="none"];
+"ultralytics.nn.modules.transformer" -> "ultralytics.nn.modules.utils" [arrowhead="open", arrowtail="none"];
+"ultralytics.nn.tasks" -> "ultralytics.nn.autobackend" [arrowhead="open", arrowtail="none"];
+"ultralytics.nn.tasks" -> "ultralytics.nn.modules" [arrowhead="open", arrowtail="none"];
+}
