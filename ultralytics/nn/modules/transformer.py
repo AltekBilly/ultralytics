@@ -22,6 +22,10 @@ class TransformerEncoderLayer(nn.Module):
 
     def __init__(self, c1, cm=2048, num_heads=8, dropout=0.0, act=nn.GELU(), normalize_before=False):
         super().__init__()
+        from ...utils.torch_utils import TORCH_1_9
+        if not TORCH_1_9:
+            raise ModuleNotFoundError(
+                'TransformerEncoderLayer() requires torch>=1.9 to use nn.MultiheadAttention(batch_first=True).')
         self.ma = nn.MultiheadAttention(c1, num_heads, dropout=dropout, batch_first=True)
         # Implementation of Feedforward model
         self.fc1 = nn.Linear(c1, cm)
@@ -47,8 +51,7 @@ class TransformerEncoderLayer(nn.Module):
         src = self.norm1(src)
         src2 = self.fc2(self.dropout(self.act(self.fc1(src))))
         src = src + self.dropout2(src2)
-        src = self.norm2(src)
-        return src
+        return self.norm2(src)
 
     def forward_pre(self, src, src_mask=None, src_key_padding_mask=None, pos=None):
         src2 = self.norm1(src)
@@ -57,8 +60,7 @@ class TransformerEncoderLayer(nn.Module):
         src = src + self.dropout1(src2)
         src2 = self.norm2(src)
         src2 = self.fc2(self.dropout(self.act(self.fc1(src2))))
-        src = src + self.dropout2(src2)
-        return src
+        return src + self.dropout2(src2)
 
     def forward(self, src, src_mask=None, src_key_padding_mask=None, pos=None):
         """Forward propagates the input through the encoder module."""
@@ -77,7 +79,7 @@ class AIFI(TransformerEncoderLayer):
         pos_embed = self.build_2d_sincos_position_embedding(w, h, c)
         # flatten [B, C, H, W] to [B, HxW, C]
         x = super().forward(x.flatten(2).permute(0, 2, 1), pos=pos_embed.to(device=x.device, dtype=x.dtype))
-        return x.permute((0, 2, 1)).view([-1, c, h, w])
+        return x.permute(0, 2, 1).view([-1, c, h, w]).contiguous()
 
     @staticmethod
     def build_2d_sincos_position_embedding(w, h, embed_dim=256, temperature=10000.):
@@ -93,8 +95,7 @@ class AIFI(TransformerEncoderLayer):
         out_w = grid_w.flatten()[..., None] @ omega[None]
         out_h = grid_h.flatten()[..., None] @ omega[None]
 
-        return torch.concat([torch.sin(out_w), torch.cos(out_w),
-                             torch.sin(out_h), torch.cos(out_h)], axis=1)[None, :, :]
+        return torch.cat([torch.sin(out_w), torch.cos(out_w), torch.sin(out_h), torch.cos(out_h)], 1)[None]
 
 
 class TransformerLayer(nn.Module):
@@ -113,8 +114,7 @@ class TransformerLayer(nn.Module):
     def forward(self, x):
         """Apply a transformer block to the input x and return the output."""
         x = self.ma(self.q(x), self.k(x), self.v(x))[0] + x
-        x = self.fc2(self.fc1(x)) + x
-        return x
+        return self.fc2(self.fc1(x)) + x
 
 
 class TransformerBlock(nn.Module):
@@ -166,9 +166,11 @@ class MLP(nn.Module):
         return x
 
 
-# From https://github.com/facebookresearch/detectron2/blob/main/detectron2/layers/batch_norm.py # noqa
-# Itself from https://github.com/facebookresearch/ConvNeXt/blob/d1fa8f6fef0a165b27399986cc2bdacc92777e40/models/convnext.py#L119  # noqa
 class LayerNorm2d(nn.Module):
+    """
+    LayerNorm2d module from https://github.com/facebookresearch/detectron2/blob/main/detectron2/layers/batch_norm.py
+    https://github.com/facebookresearch/ConvNeXt/blob/d1fa8f6fef0a165b27399986cc2bdacc92777e40/models/convnext.py#L119
+    """
 
     def __init__(self, num_channels, eps=1e-6):
         super().__init__()
@@ -180,8 +182,7 @@ class LayerNorm2d(nn.Module):
         u = x.mean(1, keepdim=True)
         s = (x - u).pow(2).mean(1, keepdim=True)
         x = (x - u) / torch.sqrt(s + self.eps)
-        x = self.weight[:, None, None] * x + self.bias[:, None, None]
-        return x
+        return self.weight[:, None, None] * x + self.bias[:, None, None]
 
 
 class MSDeformAttn(nn.Module):
@@ -229,23 +230,23 @@ class MSDeformAttn(nn.Module):
         xavier_uniform_(self.output_proj.weight.data)
         constant_(self.output_proj.bias.data, 0.)
 
-    def forward(self, query, reference_points, value, value_spatial_shapes, value_mask=None):
+    def forward(self, query, refer_bbox, value, value_shapes, value_mask=None):
         """
         https://github.com/PaddlePaddle/PaddleDetection/blob/develop/ppdet/modeling/transformers/deformable_transformer.py
         Args:
-            query (Tensor): [bs, query_length, C]
-            reference_points (Tensor): [bs, query_length, n_levels, 2], range in [0, 1], top-left (0,0),
+            query (torch.Tensor): [bs, query_length, C]
+            refer_bbox (torch.Tensor): [bs, query_length, n_levels, 2], range in [0, 1], top-left (0,0),
                 bottom-right (1, 1), including padding area
-            value (Tensor): [bs, value_length, C]
-            value_spatial_shapes (List): [n_levels, 2], [(H_0, W_0), (H_1, W_1), ..., (H_{L-1}, W_{L-1})]
+            value (torch.Tensor): [bs, value_length, C]
+            value_shapes (List): [n_levels, 2], [(H_0, W_0), (H_1, W_1), ..., (H_{L-1}, W_{L-1})]
             value_mask (Tensor): [bs, value_length], True for non-padding elements, False for padding elements
 
         Returns:
             output (Tensor): [bs, Length_{query}, C]
         """
         bs, len_q = query.shape[:2]
-        _, len_v = value.shape[:2]
-        assert sum(s[0] * s[1] for s in value_spatial_shapes) == len_v
+        len_v = value.shape[1]
+        assert sum(s[0] * s[1] for s in value_shapes) == len_v
 
         value = self.value_proj(value)
         if value_mask is not None:
@@ -255,20 +256,18 @@ class MSDeformAttn(nn.Module):
         attention_weights = self.attention_weights(query).view(bs, len_q, self.n_heads, self.n_levels * self.n_points)
         attention_weights = F.softmax(attention_weights, -1).view(bs, len_q, self.n_heads, self.n_levels, self.n_points)
         # N, Len_q, n_heads, n_levels, n_points, 2
-        n = reference_points.shape[-1]
-        if n == 2:
-            offset_normalizer = torch.as_tensor(value_spatial_shapes, dtype=query.dtype, device=query.device).flip(-1)
+        num_points = refer_bbox.shape[-1]
+        if num_points == 2:
+            offset_normalizer = torch.as_tensor(value_shapes, dtype=query.dtype, device=query.device).flip(-1)
             add = sampling_offsets / offset_normalizer[None, None, None, :, None, :]
-            sampling_locations = reference_points[:, :, None, :, None, :] + add
-
-        elif n == 4:
-            add = sampling_offsets / self.n_points * reference_points[:, :, None, :, None, 2:] * 0.5
-            sampling_locations = reference_points[:, :, None, :, None, :2] + add
+            sampling_locations = refer_bbox[:, :, None, :, None, :] + add
+        elif num_points == 4:
+            add = sampling_offsets / self.n_points * refer_bbox[:, :, None, :, None, 2:] * 0.5
+            sampling_locations = refer_bbox[:, :, None, :, None, :2] + add
         else:
-            raise ValueError(f'Last dim of reference_points must be 2 or 4, but got {n}.')
-        output = multi_scale_deformable_attn_pytorch(value, value_spatial_shapes, sampling_locations, attention_weights)
-        output = self.output_proj(output)
-        return output
+            raise ValueError(f'Last dim of reference_points must be 2 or 4, but got {num_points}.')
+        output = multi_scale_deformable_attn_pytorch(value, value_shapes, sampling_locations, attention_weights)
+        return self.output_proj(output)
 
 
 class DeformableTransformerDecoderLayer(nn.Module):
@@ -305,36 +304,24 @@ class DeformableTransformerDecoderLayer(nn.Module):
     def forward_ffn(self, tgt):
         tgt2 = self.linear2(self.dropout3(self.act(self.linear1(tgt))))
         tgt = tgt + self.dropout4(tgt2)
-        tgt = self.norm3(tgt)
-        return tgt
+        return self.norm3(tgt)
 
-    def forward(self,
-                tgt,
-                reference_points,
-                src,
-                src_spatial_shapes,
-                src_padding_mask=None,
-                attn_mask=None,
-                query_pos=None):
+    def forward(self, embed, refer_bbox, feats, shapes, padding_mask=None, attn_mask=None, query_pos=None):
         # self attention
-        q = k = self.with_pos_embed(tgt, query_pos)
-        if attn_mask is not None:
-            attn_mask = torch.where(attn_mask.astype('bool'), torch.zeros(attn_mask.shape, tgt.dtype),
-                                    torch.full(attn_mask.shape, float('-inf'), tgt.dtype))
-        tgt2 = self.self_attn(q.transpose(0, 1), k.transpose(0, 1), tgt.transpose(0, 1))[0].transpose(0, 1)
-        tgt = tgt + self.dropout1(tgt2)
-        tgt = self.norm1(tgt)
+        q = k = self.with_pos_embed(embed, query_pos)
+        tgt = self.self_attn(q.transpose(0, 1), k.transpose(0, 1), embed.transpose(0, 1),
+                             attn_mask=attn_mask)[0].transpose(0, 1)
+        embed = embed + self.dropout1(tgt)
+        embed = self.norm1(embed)
 
         # cross attention
-        tgt2 = self.cross_attn(self.with_pos_embed(tgt, query_pos), reference_points, src, src_spatial_shapes,
-                               src_padding_mask)
-        tgt = tgt + self.dropout2(tgt2)
-        tgt = self.norm2(tgt)
+        tgt = self.cross_attn(self.with_pos_embed(embed, query_pos), refer_bbox.unsqueeze(2), feats, shapes,
+                              padding_mask)
+        embed = embed + self.dropout2(tgt)
+        embed = self.norm2(embed)
 
         # ffn
-        tgt = self.forward_ffn(tgt)
-
-        return tgt
+        return self.forward_ffn(embed)
 
 
 class DeformableTransformerDecoder(nn.Module):
@@ -349,41 +336,40 @@ class DeformableTransformerDecoder(nn.Module):
         self.hidden_dim = hidden_dim
         self.eval_idx = eval_idx if eval_idx >= 0 else num_layers + eval_idx
 
-    def forward(self,
-                tgt,
-                reference_points,
-                src,
-                src_spatial_shapes,
-                bbox_head,
-                score_head,
-                query_pos_head,
-                attn_mask=None,
-                src_padding_mask=None):
-        output = tgt
-        dec_out_bboxes = []
-        dec_out_logits = []
-        ref_points = None
-        ref_points_detach = torch.sigmoid(reference_points)
+    def forward(
+            self,
+            embed,  # decoder embeddings
+            refer_bbox,  # anchor
+            feats,  # image features
+            shapes,  # feature shapes
+            bbox_head,
+            score_head,
+            pos_mlp,
+            attn_mask=None,
+            padding_mask=None):
+        output = embed
+        dec_bboxes = []
+        dec_cls = []
+        last_refined_bbox = None
+        refer_bbox = refer_bbox.sigmoid()
         for i, layer in enumerate(self.layers):
-            ref_points_input = ref_points_detach.unsqueeze(2)
-            query_pos_embed = query_pos_head(ref_points_detach)
-            output = layer(output, ref_points_input, src, src_spatial_shapes, src_padding_mask, attn_mask,
-                           query_pos_embed)
+            output = layer(output, refer_bbox, feats, shapes, padding_mask, attn_mask, pos_mlp(refer_bbox))
 
-            inter_ref_bbox = torch.sigmoid(bbox_head[i](output) + inverse_sigmoid(ref_points_detach))
+            bbox = bbox_head[i](output)
+            refined_bbox = torch.sigmoid(bbox + inverse_sigmoid(refer_bbox))
 
             if self.training:
-                dec_out_logits.append(score_head[i](output))
+                dec_cls.append(score_head[i](output))
                 if i == 0:
-                    dec_out_bboxes.append(inter_ref_bbox)
+                    dec_bboxes.append(refined_bbox)
                 else:
-                    dec_out_bboxes.append(torch.sigmoid(bbox_head[i](output) + inverse_sigmoid(ref_points)))
+                    dec_bboxes.append(torch.sigmoid(bbox + inverse_sigmoid(last_refined_bbox)))
             elif i == self.eval_idx:
-                dec_out_logits.append(score_head[i](output))
-                dec_out_bboxes.append(inter_ref_bbox)
+                dec_cls.append(score_head[i](output))
+                dec_bboxes.append(refined_bbox)
                 break
 
-            ref_points = inter_ref_bbox
-            ref_points_detach = inter_ref_bbox.detach() if self.training else inter_ref_bbox
+            last_refined_bbox = refined_bbox
+            refer_bbox = refined_bbox.detach() if self.training else refined_bbox
 
-        return torch.stack(dec_out_bboxes), torch.stack(dec_out_logits)
+        return torch.stack(dec_bboxes), torch.stack(dec_cls)
