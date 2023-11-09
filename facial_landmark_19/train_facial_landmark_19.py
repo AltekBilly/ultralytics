@@ -9,11 +9,11 @@ from torchvision.transforms import ToTensor
 
 import ultralytics
 from ultralytics import YOLO
-from ultralytics.yolo.engine.results import Boxes
-from ultralytics.yolo.engine.results import Keypoints
+from ultralytics.engine.results import Boxes
+from ultralytics.engine.results import Keypoints
 
 
-def main(model: str, data: str, epochs: int = 600, imgsz = 224):
+def main(model: str, data: str, epochs: int = 600, imgsz = 640):
     # Load a model
     model = YOLO(model)  # build a new model from YAML
 
@@ -23,4 +23,4 @@ def main(model: str, data: str, epochs: int = 600, imgsz = 224):
 if __name__ == '__main__':
     model = 'yolov8l-facial-landmark.yaml'
     data = 'facial-landmark-19.yaml'
-    main(model, data, 600, [224, 224])
+    main(model, data, 600, [640, 640])

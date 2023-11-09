@@ -9,8 +9,8 @@ from torchvision.transforms import ToTensor
 
 import ultralytics
 from ultralytics import YOLO
-from ultralytics.yolo.engine.results import Boxes
-from ultralytics.yolo.engine.results import Keypoints
+from ultralytics.engine.results import Boxes
+from ultralytics.engine.results import Keypoints
 
 
 def main(model: str, data: str, epochs: int = 600, imgsz = 640):

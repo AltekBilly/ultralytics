@@ -9,8 +9,8 @@ from torchvision.transforms import ToTensor
 
 import ultralytics
 from ultralytics import YOLO
-from ultralytics.yolo.engine.results import Boxes
-from ultralytics.yolo.engine.results import Keypoints
+from ultralytics.engine.results import Boxes
+from ultralytics.engine.results import Keypoints
 
 COLOR = [(  0,   0, 255), (  0,  64, 255), (  0, 128, 255), (  0, 191, 255),
          (  0, 255, 255), (  0, 255, 191), (  0, 255,   0), (191, 255,   0),
