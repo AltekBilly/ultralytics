@@ -225,7 +225,7 @@ def model_info(model, detailed=False, verbose=True, imgsz=640):
 
     flops = get_flops(model, imgsz)
     fused = ' (fused)' if getattr(model, 'is_fused', lambda: False)() else ''
-    fs = f', {flops:.1f} GFLOPs' if flops else ''
+    fs = f', {flops:.3f} GFLOPs' if flops else ''
     yaml_file = getattr(model, 'yaml_file', '') or getattr(model, 'yaml', {}).get('yaml_file', '')
     model_name = Path(yaml_file).stem.replace('yolo', 'YOLO') or 'Model'
     LOGGER.info(f'{model_name} summary{fused}: {n_l} layers, {n_p} parameters, {n_g} gradients{fs}')
@@ -274,11 +274,15 @@ def get_flops(model, imgsz=640):
         model = de_parallel(model)
         p = next(model.parameters())
         stride = max(int(model.stride.max()), 32) if hasattr(model, 'stride') else 32  # max stride
-        im = torch.empty((1, p.shape[1], stride, stride), device=p.device)  # input image in BCHW format
+        if(p.shape[1]==1): 
+            im = torch.empty((1, 3, stride, stride), device=p.device)
+        else:
+            im = torch.empty((1, p.shape[1], stride, stride), device=p.device)  # input image in BCHW format
         flops = thop.profile(deepcopy(model), inputs=[im], verbose=False)[0] / 1E9 * 2 if thop else 0  # stride GFLOPs
         imgsz = imgsz if isinstance(imgsz, list) else [imgsz, imgsz]  # expand if int/float
         return flops * imgsz[0] / stride * imgsz[1] / stride  # 640x640 GFLOPs
-    except Exception:
+    except Exception as e:
+        print(f"捕捉到異常: {e}")
         return 0
 
 

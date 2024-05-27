@@ -73,15 +73,20 @@ class LightConv(nn.Module):
     https://github.com/PaddlePaddle/PaddleDetection/blob/develop/ppdet/modeling/backbones/hgnet_v2.py
     """
 
-    def __init__(self, c1, c2, k=1, act=nn.ReLU()):
+    def __init__(self, c1, c2, k=1, s=1, act=nn.ReLU()):
         """Initialize Conv layer with given arguments including activation."""
         super().__init__()
         self.conv1 = Conv(c1, c2, 1, act=False)
-        self.conv2 = DWConv(c2, c2, k, act=act)
+        self.conv2 = DWConv(c2, c2, k, s, act=act)
+        # self.conv1 = DWConv(c1, c1, k, s, act=False)
+        # self.conv2 = Conv(c1, c2, 1, act=act)
 
     def forward(self, x):
         """Apply 2 convolutions to input tensor."""
-        return self.conv2(self.conv1(x))
+        # return self.conv2(self.conv1(x))
+        x = self.conv1(x)
+        x = self.conv2(x)
+        return x
 
 
 class DWConv(Conv):

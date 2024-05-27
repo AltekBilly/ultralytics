@@ -2,7 +2,7 @@
 
 from ultralytics.engine.model import Model
 from ultralytics.models import yolo  # noqa
-from ultralytics.nn.tasks import ClassificationModel, DetectionModel, PoseModel, SegmentationModel
+from ultralytics.nn.tasks import ClassificationModel, DetectionModel, PoseModel, SegmentationModel, Altek_LandmarkModel
 
 
 class YOLO(Model):
@@ -31,4 +31,12 @@ class YOLO(Model):
                 'model': PoseModel,
                 'trainer': yolo.pose.PoseTrainer,
                 'validator': yolo.pose.PoseValidator,
-                'predictor': yolo.pose.PosePredictor, }, }
+                'predictor': yolo.pose.PosePredictor, }, 
+            # (+) -> add by billy
+            'altek_landmark': {
+                'model': Altek_LandmarkModel,
+                'trainer': None,
+                'validator': None,
+                'predictor': None, }, 
+            # <- (+) add by billy
+            }
