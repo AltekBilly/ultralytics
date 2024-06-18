@@ -407,7 +407,7 @@ class RTDETRDecoder(nn.Module):
 class AltekPose(Detect):
     """YOLOv8 Altek Pose head for keypoints models."""
 
-    def __init__(self, nc=80, kpt_shape=(17, 3), ch=()):
+    def __init__(self, nc=1, kpt_shape=(24, 3), ch=()):
         """Initialize YOLO network with default parameters and Convolutional Layers."""
         kernel_size=1
         
@@ -453,29 +453,21 @@ class AltekPose(Detect):
             y[:, 1::ndim] = (y[:, 1::ndim] * 2.0 + (self.anchors[1] - 0.5)) * self.strides
             return y
 
-class Altek_Landmark(nn.Module):
-    """YOLOv8 Detect head for detection models."""
-    dynamic = False  # force grid reconstruction
-    export = False  # export mode
-    shape = None
-    anchors = torch.empty(0)  # init
-    strides = torch.empty(0)  # init
+class Altek_Landmark(Detect):
+    """YOLOv8 Altek Pose head for keypoints models."""
+
+    def __init__(self, nc=80, kpt_shape=(17, 3), ch=()):
+        """Initialize YOLO network with default parameters and Convolutional Layers."""
+        kernel_size=1
         
-    def __init__(self, nc=1, kpt_shape=(24, 3), ch=()):
-        kernel_size = 1
-        
-        """Initializes the YOLOv8 detection layer with specified number of classes and channels."""
-        super().__init__()
-        self.nc = nc  # number of classes
-        self.nl = len(ch)  # number of detection layers
-        # //self.no = nc + self.reg_max * 4  # number of outputs per anchor
-        self.stride = torch.zeros(self.nl)  # strides computed during build
-        
+        super().__init__(nc, ch, kernel_size=kernel_size)
         self.kpt_shape = kpt_shape  # number of keypoints, number of dims (2 for x,y or 3 for x,y,visible)
         self.nk = kpt_shape[0] * kpt_shape[1]  # number of keypoints total
+        self.detect = Detect.forward
+
         c4 = max(ch[0] // 4, self.nk)
         self.cv4 = nn.ModuleList(nn.Sequential(Conv(x, c4, kernel_size), Conv(c4, c4, kernel_size), nn.Conv2d(c4, self.nk, 1)) for x in ch)
-    
+
     def forward(self, x):
         """Perform forward pass through YOLO model and return predictions."""
         if not self.training and self.export:
@@ -483,24 +475,16 @@ class Altek_Landmark(nn.Module):
         
         bs = x[0].shape[0]  # batch size
         kpt = torch.cat([self.cv4[i](x[i]).view(bs, self.nk, -1) for i in range(self.nl)], -1)  # (bs, 17*3, h*w)
-         
-        if self.training:
-            return kpt
+   
+        x = self.detect(self, x)
         
-        self.anchors, self.strides = (x.transpose(0, 1) for x in make_anchors(x, self.stride, 0.5))
+        if self.training:
+            return x, kpt
+        
         pred_kpt = self.kpts_decode(bs, kpt)
         
-        return (pred_kpt, kpt)
-    
-    def bias_init(self):
-        """Initialize Detect() biases, WARNING: requires stride availability."""
-        m = self  # self.model[-1]  # Detect() module
-        # cf = torch.bincount(torch.tensor(np.concatenate(dataset.labels, 0)[:, 0]).long(), minlength=nc) + 1
-        # ncf = math.log(0.6 / (m.nc - 0.999999)) if cf is None else torch.log(cf / cf.sum())  # nominal class frequency
-        for a, b, s in zip(m.cv2, m.cv3, m.stride):  # from
-            a[-1].bias.data[:] = 1.0  # box
-            b[-1].bias.data[:m.nc] = math.log(5 / m.nc / (640 / s) ** 2)  # cls (.01 objects, 80 classes, 640 img)
-            
+        return (torch.cat([x[0], pred_kpt], 1), (x[1], kpt))
+
     def kpts_decode(self, bs, kpts):
         """Decodes keypoints."""
         ndim = self.kpt_shape[1]

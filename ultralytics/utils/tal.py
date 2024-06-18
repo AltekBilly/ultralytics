@@ -8,8 +8,10 @@ from .metrics import bbox_iou
 
 TORCH_1_10 = check_version(torch.__version__, '1.10.0')
 
-
-def select_candidates_in_gts(xy_centers, gt_bboxes, eps=1e-9):
+# (-/+) -> modify by billy
+# //def select_candidates_in_gts(xy_centers, gt_bboxes, eps=1e-9):
+def select_candidates_in_gts(xy_centers, gt_bboxes, eps=1e-32):
+# <- (-/+) modify by billy
     """
     Select the positive anchor center in gt.
 

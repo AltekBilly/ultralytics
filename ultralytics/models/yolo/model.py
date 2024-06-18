@@ -35,8 +35,8 @@ class YOLO(Model):
             # (+) -> add by billy
             'altek_landmark': {
                 'model': Altek_LandmarkModel,
-                'trainer': None,
-                'validator': None,
+                'trainer': yolo.altek_landmark.Altek_LandmarkTrainer,
+                'validator': yolo.altek_landmark.Altek_LandmarkValidator,
                 'predictor': None, }, 
             # <- (+) add by billy
             }

@@ -242,14 +242,15 @@ class DetectionModel(BaseModel):
         # <- (-/+) modify by billy
             s = 256  # 2x min stride
             m.inplace = self.inplace
-            forward = lambda x: self.forward(x)[0] if isinstance(m, (Segment, Pose)) else self.forward(x)
-            m.stride = torch.tensor([s / x.shape[-2] for x in forward(torch.zeros(1, ch, s, s))])  # forward
+            forward = lambda x: self.forward(x)[0] if isinstance(m, (Segment, Pose, AltekPose)) else self.forward(x)
+            # (-/+) -> modify by billy
+            self.eval()
+            # //m.stride = torch.tensor([s / x.shape[-2] for x in forward(torch.zeros(1, ch, s, s))])  # forward
+            m.stride = torch.tensor([s if x.shape[-1]==1 else s / (x.shape[-1]**0.5) for x in forward(torch.zeros(1, ch, s, s))])  # forward 
+            self.train()
+            # <- (-/+) modify by billy
             self.stride = m.stride
             m.bias_init()  # only run once
-        # (+) -> add by billy
-        elif isinstance(m, AltekPose):
-            self.stride = torch.Tensor([256])  # default stride for i.e. AltekPose
-        # <- (+) add by billy
         else:
             self.stride = torch.Tensor([32])  # default stride for i.e. RTDETR
 
@@ -533,8 +534,15 @@ class Altek_LandmarkModel(BaseModel):
         self.inplace = self.yaml.get('inplace', True)
 
         # Build strides
-        m = self.model[-1]  # AltekLandmark()
-        self.stride = torch.Tensor([256])  # default stride for i.e. AltekLandmark
+        m = self.model[-1]  # Altek_Lanmdark()
+        s = 256  # 2x min stride
+        m.inplace = self.inplace
+        forward = lambda x: self.forward(x)[0]
+        self.eval()
+        m.stride = torch.tensor([s if x.shape[-1]==1 else s / (x.shape[-1]**0.5) for x in forward(torch.zeros(1, ch, s, s))])  # forward 
+        self.train()
+        self.stride = m.stride
+        m.bias_init()  # only run once
 
         # Init weights, biases
         initialize_weights(self)

@@ -7,26 +7,26 @@ import numpy as np
 from ultralytics.data import build_dataloader, build_yolo_dataset
 from ultralytics.engine.trainer import BaseTrainer
 from ultralytics.models import yolo
-from ultralytics.nn.tasks import DetectionModel
+from ultralytics.nn.tasks import Altek_LandmarkModel
 from ultralytics.utils import LOGGER, RANK
 from ultralytics.utils.plotting import plot_images, plot_labels, plot_results
 from ultralytics.utils.torch_utils import de_parallel, torch_distributed_zero_first
 
 
-class DetectionTrainer(BaseTrainer):
+class Altek_LandmarkTrainer(BaseTrainer):
     """
-    A class extending the BaseTrainer class for training based on a detection model.
+    A class extending the BaseTrainer class for training based on a Altek_Landmark model.
 
     Example:
         ```python
-        from ultralytics.models.yolo.detect import DetectionTrainer
+        from ultralytics.models.yolo.altek_landmark import Altek_LandmarkTrainer
 
-        args = dict(model='yolov8n.pt', data='coco8.yaml', epochs=3)
-        trainer = DetectionTrainer(overrides=args)
+        args = dict(model='yolov8n-Altek_Landmark-altek_FacailLandmark.pt', data='altek-FacialLandmark.yaml', epochs=3)
+        trainer = Altek_LandmarkTrainer(overrides=args)
         trainer.train()
         ```
     """
-
+    
     def build_dataset(self, img_path, mode='train', batch=None):
         """
         Build YOLO Dataset.
@@ -37,11 +37,8 @@ class DetectionTrainer(BaseTrainer):
             batch (int, optional): Size of batches, this is for `rect`. Defaults to None.
         """
         gs = max(int(de_parallel(self.model).stride.max() if self.model else 0), 32)
-        # (-/+) -> modify by billy
-        # //return build_yolo_dataset(self.args, img_path, batch, self.data, mode=mode, rect=mode == 'val', stride=gs)
         return build_yolo_dataset(self.args, img_path, batch, self.data, mode=mode, rect=False, stride=gs)
-        # <- (-/+) modify by billy
-
+    
     def get_dataloader(self, dataset_path, batch_size=16, rank=0, mode='train'):
         """Construct and return dataloader."""
         assert mode in ['train', 'val']
@@ -53,12 +50,13 @@ class DetectionTrainer(BaseTrainer):
             shuffle = False
         workers = self.args.workers if mode == 'train' else self.args.workers * 2
         return build_dataloader(dataset, batch_size, workers, shuffle, rank)  # return dataloader
-
+    
     def preprocess_batch(self, batch):
         """Preprocesses a batch of images by scaling and converting to float."""
         batch['img'] = batch['img'].to(self.device, non_blocking=True).float() / 255
         return batch
 
+    # NOTE - merge detect and pose
     def set_model_attributes(self):
         """Nl = de_parallel(self.model).model[-1].nl  # number of detection layers (to scale hyps)."""
         # self.args.box *= 3 / nl  # scale to layers
@@ -68,18 +66,24 @@ class DetectionTrainer(BaseTrainer):
         self.model.names = self.data['names']  # attach class names to model
         self.model.args = self.args  # attach hyperparameters to model
         # TODO: self.model.class_weights = labels_to_class_weights(dataset.labels, nc).to(device) * nc
+        
+        """Sets keypoints shape attribute of PoseModel."""
+        self.model.kpt_shape = self.data['kpt_shape']
 
+    # NOTE - modify 
     def get_model(self, cfg=None, weights=None, verbose=True):
-        """Return a YOLO detection model."""
-        model = DetectionModel(cfg, nc=self.data['nc'], verbose=verbose and RANK == -1)
+        """Get Altek_Landmark estimation model with specified configuration and weights."""
+        model = Altek_LandmarkModel(cfg, ch=3, nc=self.data['nc'], data_kpt_shape=self.data['kpt_shape'], verbose=verbose)
         if weights:
             model.load(weights)
+
         return model
 
+    # TODO - Implement class - yolo.altek_landmark.Altek_LandmarkValidator()
     def get_validator(self):
-        """Returns a DetectionValidator for YOLO model validation."""
-        self.loss_names = 'box_loss', 'cls_loss', 'dfl_loss'
-        return yolo.detect.DetectionValidator(self.test_loader, save_dir=self.save_dir, args=copy(self.args))
+        """Returns an instance of the Altek_LandmarkValidator class for validation."""
+        self.loss_names = 'box_loss', 'pose_loss', 'kobj_loss', 'cls_loss', 'dfl_loss'
+        return yolo.altek_landmark.Altek_LandmarkValidator(self.test_loader, save_dir=self.save_dir, args=copy(self.args))
 
     def label_loss_items(self, loss_items=None, prefix='train'):
         """
@@ -99,20 +103,30 @@ class DetectionTrainer(BaseTrainer):
         return ('\n' + '%11s' *
                 (4 + len(self.loss_names))) % ('Epoch', 'GPU_mem', *self.loss_names, 'Instances', 'Size')
 
+    # NOTE - modify 
     def plot_training_samples(self, batch, ni):
-        """Plots training samples with their annotations."""
-        plot_images(images=batch['img'],
-                    batch_idx=batch['batch_idx'],
-                    cls=batch['cls'].squeeze(-1),
-                    bboxes=batch['bboxes'],
-                    paths=batch['im_file'],
+        """Plot a batch of training samples with annotated class labels, bounding boxes, and keypoints."""
+        images = batch['img']
+        kpts = batch['keypoints']
+        cls = batch['cls'].squeeze(-1)
+        bboxes = batch['bboxes']
+        paths = batch['im_file']
+        batch_idx = batch['batch_idx']
+        plot_images(images,
+                    batch_idx,
+                    cls,
+                    bboxes,
+                    kpts=kpts,
+                    paths=paths,
                     fname=self.save_dir / f'train_batch{ni}.jpg',
                     on_plot=self.on_plot)
-
+        
+    # TODO - add param 'altek_landmark' of plot_results()
     def plot_metrics(self):
-        """Plots metrics from a CSV file."""
-        plot_results(file=self.csv, on_plot=self.on_plot)  # save results.png
-
+        """Plots training/val metrics."""
+        plot_results(file=self.csv, pose=True, on_plot=self.on_plot)  # save results.png
+        
+    #TODO - Implement function - plot_kpts()
     def plot_training_labels(self):
         """Create a labeled training plot of the YOLO model."""
         boxes = np.concatenate([lb['bboxes'] for lb in self.train_loader.dataset.labels], 0)
