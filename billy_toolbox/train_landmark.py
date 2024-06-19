@@ -6,6 +6,9 @@ import os
 import numpy as np
 import cv2
 
+os.environ["CUDA_VISIBLE_DEVICES"] = "0" 
+os.environ["WORLD_SIZE"] = "1"
+
 home_path = os.path.expanduser("~")
 
 Is_Altek_Landmark = True# False# 
