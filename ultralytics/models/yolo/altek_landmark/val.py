@@ -93,7 +93,7 @@ class Altek_LandmarkValidator(BaseValidator):
     # NOTE - modfiy it
     def get_desc(self):
         """Returns description of evaluation metrics in string format."""
-        return ('%22s' + '%11s' * 11) % ('Class', 'Images', 'Instances', 'Box(P', 'R', 'mAP50', 'mAP50-95)', 'Pose(P', 'R', 'mAP50', 'mAP50-95)', 'NMS')
+        return ('%22s' + '%11s' * 11) % ('Class', 'Images', 'Instances', 'Box(P', 'R', 'mAP50', 'mAP50-95)', 'Pose(P', 'R', 'mAP50', 'mAP50-95)', 'NME')
     
     # TODO - modfiy it
     def postprocess(self, preds):

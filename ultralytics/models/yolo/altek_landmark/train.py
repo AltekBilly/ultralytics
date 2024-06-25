@@ -82,7 +82,7 @@ class Altek_LandmarkTrainer(BaseTrainer):
     # TODO - Implement class - yolo.altek_landmark.Altek_LandmarkValidator()
     def get_validator(self):
         """Returns an instance of the Altek_LandmarkValidator class for validation."""
-        self.loss_names = 'box_loss', 'pose_loss', 'kobj_loss', 'cls_loss', 'dfl_loss'
+        self.loss_names = 'box_loss', 'pose_loss', 'kobj_loss', 'cls_loss', 'dfl_loss', 'nme_loss'
         return yolo.altek_landmark.Altek_LandmarkValidator(self.test_loader, save_dir=self.save_dir, args=copy(self.args))
 
     def label_loss_items(self, loss_items=None, prefix='train'):

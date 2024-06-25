@@ -5,11 +5,11 @@ task: altek_landmark  # (str) YOLO task, i.e. detect, segment, classify, pose
 mode: train  # (str) YOLO mode, i.e. train, val, predict, export, track, benchmark
 
 # Train settings -------------------------------------------------------------------------------------------------------
-model: #yolov8n-Altek_Landmark-FacailLandmark.yaml # (str, optional) path to model file, i.e. yolov8n.pt, yolov8n.yaml
+model: /runs/altek_landmark/Altek_Landmark-FacialLandmark-test-20240620/weights/best.pt # (str, optional) path to model file, i.e. yolov8n.pt, yolov8n.yaml
 data: altek-FacialLandmark.yaml # (str, optional) path to data file, i.e. coco128.yaml
-epochs: 1000  # (int) number of epochs to train for
+epochs: 300  # (int) number of epochs to train for
 patience: 0  # (int) epochs to wait for no observable improvement for early stopping of training
-batch: 64  # (int) number of images per batch (-1 for AutoBatch)
+batch: 512  # (int) number of images per batch (-1 for AutoBatch)
 imgsz: 256  # (int | list) input images size as int for train and val modes, or list[w,h] for predict and export modes
 save: True  # (bool) save train checkpoints and predict results
 save_period: -1 # (int) Save checkpoint every x epochs (disabled if < 1)
@@ -17,7 +17,7 @@ cache: False  # (bool) True/ram, disk or False. Use cache for data loading
 device: 0 # (int | str | list, optional) device to run on, i.e. cuda device=0 or device=0,1,2,3 or device=cpu
 workers: 8  # (int) number of worker threads for data loading (per RANK if DDP)
 project:  # (str, optional) project name
-name: Altek_Landmark-FacialLandmark-test-20240618 # (str, optional) experiment name, results saved to 'project/name' directory
+name: Altek_Landmark-FacialLandmark-test-20240621 # (str, optional) experiment name, results saved to 'project/name' directory
 exist_ok: True  # (bool) whether to overwrite existing experiment
 pretrained: True  # (bool | str) whether to use a pretrained model (bool) or a model to load weights from (str)
 optimizer: auto  # (str) optimizer to use, choices=[SGD, Adam, Adamax, AdamW, NAdam, RAdam, RMSProp, auto]
@@ -91,23 +91,23 @@ weight_decay: 0.0005  # (float) optimizer weight decay 5e-4
 warmup_epochs: 3.0  # (float) warmup epochs (fractions ok)
 warmup_momentum: 0.8  # (float) warmup initial momentum
 warmup_bias_lr: 0.1  # (float) warmup initial bias lr
-box: 7.5  # (float) box loss gain
+box: 1.5  # (float) box loss gain
 cls: 0.5  # (float) cls loss gain (scale with pixels)
 dfl: 1.5  # (float) dfl loss gain
-pose: 12.0  # (float) pose loss gain
+pose: 24.0  # (float) pose loss gain
 kobj: 1.0  # (float) keypoint obj loss gain
 label_smoothing: 0.0  # (float) label smoothing (fraction)
 nbs: 64  # (int) nominal batch size
-hsv_h: 0.0 #0.015  # (float) image HSV-Hue augmentation (fraction)
-hsv_s: 0.0 #0.7  # (float) image HSV-Saturation augmentation (fraction)
-hsv_v: 0.0 #0.4  # (float) image HSV-Value augmentation (fraction)
-degrees: 0.0 #10.0  # (float) image rotation (+/- deg)
-translate: 0.0 #0.1  # (float) image translation (+/- fraction)
+hsv_h: 0.015  # (float) image HSV-Hue augmentation (fraction)
+hsv_s: 0.7  # (float) image HSV-Saturation augmentation (fraction)
+hsv_v: 0.4  # (float) image HSV-Value augmentation (fraction)
+degrees: 10.0  # (float) image rotation (+/- deg)
+translate: 0.1  # (float) image translation (+/- fraction)
 scale: 0.0  # (float) image scale (+/- gain)
 shear: 0.0  # (float) image shear (+/- deg)
 perspective: 0.0  # (float) image perspective (+/- fraction), range 0-0.001
 flipud: 0.0  # (float) image flip up-down (probability)
-fliplr: 0.0 #0.5  # (float) image flip left-right (probability)
+fliplr: 0.5  # (float) image flip left-right (probability)
 mosaic: 0.0  # (float) image mosaic (probability)
 mixup: 0.0  # (float) image mixup (probability)
 copy_paste: 0.0  # (float) segment copy-paste (probability)

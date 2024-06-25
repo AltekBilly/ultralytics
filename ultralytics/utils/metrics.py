@@ -1216,7 +1216,11 @@ class NormalizedMeanError(torchmetrics.Metric):
         self.total_error += torch.sum(error)
 
     def compute(self):
-        return self.total_error / self.total_objects.float()
+        try:
+            error = self.total_error / self.total_objects.float()
+        except:
+            print(f'self.total_error: {self.total_error }, self.total_objects.float(): {self.total_objects.float()}' )
+        return error
 
 if __name__ == '__main__':
     np.random.seed(0)

@@ -98,10 +98,14 @@ class BboxLoss(nn.Module):
 class KeypointLoss(nn.Module):
     """Criterion class for computing training losses."""
 
-    def __init__(self, sigmas) -> None:
+    # (-/+) -> modify by billy
+    # //def __init__(self, sigmas) -> None:
+    def __init__(self, sigmas, alpha=1) -> None:
+    # (-/+) -> modify by billy
         """Initialize the KeypointLoss class."""
         super().__init__()
         self.sigmas = sigmas
+        self.alpha = alpha # (+) -> add by billy <- (+)
 
     def forward(self, pred_kpts, gt_kpts, kpt_mask, area):
         """Calculates keypoint loss factor and Euclidean distance loss for predicted and actual keypoints."""
@@ -113,7 +117,7 @@ class KeypointLoss(nn.Module):
         # e = d / (2 * (area * self.sigmas) ** 2 + 1e-9)  # from formula
         # (-/+) -> modify by billy
         # e = d / (2 * self.sigmas) ** 2 / (area + 1e-9) / 2  # from cocoeval
-        e = d / (2 * self.sigmas) ** 2 / (area + 1e-32) / 16  # from cocoeval
+        e = d / (2 * self.sigmas) ** 2 / (area + 1e-32) / 2 / self.alpha  # from cocoeval
         # <- (-/+) modify by billy
         # a = d.mean()
         # a = e.mean()
@@ -121,6 +125,22 @@ class KeypointLoss(nn.Module):
         # a= kpt_loss_factor.mean()
         return (kpt_loss_factor.view(-1, 1) * ((1 - torch.exp(-e)) * kpt_mask)).mean()
 
+
+# (+) -> add by billy
+class NormalizedMeanErrorLoss(nn.Module):
+    def __init__(self, pts=None, nme_ref=None):
+        super(NormalizedMeanErrorLoss, self).__init__()
+        self.pts = pts
+        self.ref = nme_ref
+
+    def forward(self, y_true, y_pred):
+        """
+        y_true, y_pred (float32 tensor): Landmarks. Shape: [bs, pts, 2].
+        """
+        norm_factor = torch.norm(y_true[:, self.ref[0], :2] - y_true[:, self.ref[1], :2], dim=1)  # [bs]
+        error = torch.mean(torch.norm(y_true[..., :2] - y_pred[..., :2], dim=2), dim=1) / norm_factor
+        return torch.mean(error)
+# <- (+) add by billy
 
 class v8DetectionLoss:
     """Criterion class for computing training losses."""
@@ -570,7 +590,8 @@ class Altek_LandmarkLoss:
         is_pose = self.kpt_shape == [17, 3]
         nkpt = self.kpt_shape[0]  # number of keypoints
         sigmas = torch.from_numpy(OKS_SIGMA).to(self.device) if is_pose else torch.ones(nkpt, device=self.device) / nkpt
-        self.keypoint_loss = KeypointLoss(sigmas=sigmas)
+        self.keypoint_loss = KeypointLoss(sigmas=sigmas, alpha=64)
+        self.nme_loss = NormalizedMeanErrorLoss(pts=24, nme_ref=[10, 19])
         
     def preprocess(self, targets, batch_size, scale_tensor):
         """Preprocesses the target counts and matches with the input batch size to output a tensor."""
@@ -600,7 +621,7 @@ class Altek_LandmarkLoss:
 
     def __call__(self, preds, batch):
         """Calculate the total loss and detach it."""
-        loss = torch.zeros(5, device=self.device)  # box, cls, dfl, kpt_location, kpt_visibility
+        loss = torch.zeros(6, device=self.device)  # box, cls, dfl, kpt_location, kpt_visibility, nme
         feats, pred_kpts = preds if isinstance(preds[0], list) else preds[1]
         pred_distri, pred_scores = torch.cat([xi.view(feats[0].shape[0], self.no, -1) for xi in feats], 2).split((self.reg_max * 4, self.nc), 1)
 
@@ -643,14 +664,15 @@ class Altek_LandmarkLoss:
             keypoints[..., 0] *= imgsz[1]
             keypoints[..., 1] *= imgsz[0]
 
-            loss[1], loss[2] = self.calculate_keypoints_loss(fg_mask, target_gt_idx, keypoints, batch_idx, stride_tensor, target_bboxes, pred_kpts)
+            loss[1], loss[2], loss[5] = self.calculate_keypoints_loss(fg_mask, target_gt_idx, keypoints, batch_idx, stride_tensor, target_bboxes, pred_kpts)
 
         loss[0] *= self.hyp.box  # box gain
         loss[1] *= self.hyp.pose  # pose gain
         loss[2] *= self.hyp.kobj  # kobj gain
         loss[3] *= self.hyp.cls  # cls gain
         loss[4] *= self.hyp.dfl  # dfl gain
-
+        loss[5] *= self.hyp.pose  # pose gain / 2
+        
         return loss.sum() * batch_size, loss.detach()  # loss(box, cls, dfl)
     
     @staticmethod
@@ -712,7 +734,8 @@ class Altek_LandmarkLoss:
 
         kpts_loss = 0
         kpts_obj_loss = 0
-
+        nme_loss = 0
+        
         if masks.any():
             gt_kpt = selected_keypoints[masks]
             area = xyxy2xywh(target_bboxes[masks])[:, 2:].prod(1, keepdim=True)
@@ -723,5 +746,7 @@ class Altek_LandmarkLoss:
             if pred_kpt.shape[-1] == 3:
                 kpts_obj_loss = self.bce_pose(pred_kpt[..., 2], kpt_mask.float())  # keypoint obj loss
 
-        return kpts_loss, kpts_obj_loss
+            nme_loss = self.nme_loss(pred_kpt, gt_kpt)
+            
+        return kpts_loss, kpts_obj_loss, nme_loss
 # <- (+) add by billy

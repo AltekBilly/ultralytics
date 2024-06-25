@@ -37,6 +37,6 @@ class YOLO(Model):
                 'model': Altek_LandmarkModel,
                 'trainer': yolo.altek_landmark.Altek_LandmarkTrainer,
                 'validator': yolo.altek_landmark.Altek_LandmarkValidator,
-                'predictor': None, }, 
+                'predictor': yolo.altek_landmark.Altek_LandmarkPredictor, }, 
             # <- (+) add by billy
             }

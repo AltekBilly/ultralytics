@@ -6,8 +6,8 @@ class NormalizedMeanError(tf.keras.metrics.Metric):
         super(NormalizedMeanError, self).__init__(name=name, **kwargs)
         self.pts = pts
         self.ref = ref
-        self.total_objects = self.add_weight('total_objects', shape=(), initializer='zeros', dtype=tf.int32)
-        self.total_error = self.add_weight('total_error', shape=(), initializer='zeros')
+        self.total_objects = self.add_weight(name='total_objects', shape=(), initializer='zeros', dtype=tf.int32)
+        self.total_error = self.add_weight(name='total_error', shape=(), initializer='zeros')
 
     def reset_states(self):
         self.total_objects.assign(tf.zeros_like(self.total_objects))
@@ -129,7 +129,8 @@ def main(pts: int, nme_ref: list, input_size: int, targets, preds):
 if __name__ == '__main__':
     home_path = os.path.expanduser("~")
     true_label_dir = f'{home_path}/dataset/FacialLandmark_for_yolov8-pose/labels/val'
-    pred_label_dir = f'./runs/pose/predict-altek_FacialLandmark-test-20240521/labels'
+    # pred_label_dir = f'./runs/altek_landmark/predict2/labels' 
+    pred_label_dir = f'./runs/pose/predict/labels' #
     
     true_keypoints, pred_keypoints = load_keypoints_from_dirs(true_label_dir, pred_label_dir)
     

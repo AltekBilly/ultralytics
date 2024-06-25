@@ -1,11 +1,11 @@
 # Ultralytics YOLO 🚀, AGPL-3.0 license
 # Default training settings and hyperparameters for medium-augmentation COCO training
 
-task: pose  # (str) YOLO task, i.e. detect, segment, classify, pose
+task: altek_landmark  # (str) YOLO task, i.e. detect, segment, classify, pose
 mode: predict  # (str) YOLO mode, i.e. train, val, predict, export, track, benchmark
 
 # Train settings -------------------------------------------------------------------------------------------------------
-model: /home/BillyHsueh/repo/ultralytics/runs/pose/altek_FacialLandmark-test-20240522/weights/best.pt # (str, optional) path to model file, i.e. yolov8n.pt, yolov8n.yaml
+model: runs/pose/AltekPose-altek_FacialLandmark-test-20240621/weights/best.pt # (str, optional) path to model file, i.e. yolov8n.pt, yolov8n.yaml
 data: altek-FacialLandmark.yaml # (str, optional) path to data file, i.e. coco128.yaml
 epochs: 300  # (int) number of epochs to train for
 patience: 50  # (int) epochs to wait for no observable improvement for early stopping of training
@@ -17,7 +17,7 @@ cache: False  # (bool) True/ram, disk or False. Use cache for data loading
 device: 0 # (int | str | list, optional) device to run on, i.e. cuda device=0 or device=0,1,2,3 or device=cpu
 workers: 8  # (int) number of worker threads for data loading (per RANK if DDP)
 project:  # (str, optional) project name
-name: predict-altek_FacialLandmark-test-20240522 # (str, optional) experiment name, results saved to 'project/name' directory
+name: predict-altek_FacialLandmark-test-20240620 # (str, optional) experiment name, results saved to 'project/name' directory
 exist_ok: False  # (bool) whether to overwrite existing experiment
 pretrained: True  # (bool | str) whether to use a pretrained model (bool) or a model to load weights from (str)
 optimizer: auto  # (str) optimizer to use, choices=[SGD, Adam, Adamax, AdamW, NAdam, RAdam, RMSProp, auto]
