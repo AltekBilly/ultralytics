@@ -15,7 +15,10 @@ from .conv import Conv
 from .transformer import MLP, DeformableTransformerDecoder, DeformableTransformerDecoderLayer
 from .utils import bias_init_with_prob, linear_init
 
-__all__ = "Detect", "Segment", "Pose", "Classify", "OBB", "RTDETRDecoder", "v10Detect"
+# (-/+) -> modfiy by billy
+# //__all__ = "Detect", "Segment", "Pose", "Classify", "OBB", "RTDETRDecoder", "v10Detect"
+__all__ = "Detect", "Segment", "Pose", "Classify", "OBB", "RTDETRDecoder", "v10Detect", "Altek_Landmark"
+# <- (-/+) modfiy by billy
 
 
 class Detect(nn.Module):
@@ -44,9 +47,23 @@ class Detect(nn.Module):
         self.cv3 = nn.ModuleList(nn.Sequential(Conv(x, c3, 3), Conv(c3, c3, 3), nn.Conv2d(c3, self.nc, 1)) for x in ch)
         self.dfl = DFL(self.reg_max) if self.reg_max > 1 else nn.Identity()
 
+        # (+) -> add by billy: QAT
+        self.quant = False
+        # m.np = sum(x.numel() for x in m_.parameters())
+        self.block_parameters = {
+            'cv2': sum(x.numel() for x in self.cv2.parameters()),
+            'cv3': sum(x.numel() for x in self.cv3.parameters()),
+            'dfl': sum(x.numel() for x in self.dfl.parameters()),
+        }
+        # <- (+) add by billy
+
         if self.end2end:
             self.one2one_cv2 = copy.deepcopy(self.cv2)
             self.one2one_cv3 = copy.deepcopy(self.cv3)
+            # (+) -> add by billy
+            self.block_parameters['one2one_cv2'] = sum(x.numel() for x in self.one2one_cv2.parameters())
+            self.block_parameters['one2one_cv3'] = sum(x.numel() for x in self.one2one_cv3.parameters())
+            # <- (+) add by billy
 
     def forward(self, x):
         """Concatenates and returns predicted bounding boxes and class probabilities."""
@@ -257,6 +274,75 @@ class Pose(Detect):
             y[:, 1::ndim] = (y[:, 1::ndim] * 2.0 + (self.anchors[1] - 0.5)) * self.strides
             return y
 
+# (+) -> add by billy: add head class for Altek_Landmark
+class Altek_Landmark(Detect):
+    """YOLOv8 Altek_Landmark head for keypoints models."""
+
+    def __init__(self, nc=80, kpt_shape=(24, 3), ch=()):
+        """Initialize YOLO network with default parameters and Convolutional Layers."""
+        super().__init__(nc, ch)
+        self.kpt_shape = kpt_shape  # number of keypoints, number of dims (2 for x,y or 3 for x,y,visible)
+        self.nk = kpt_shape[0] * kpt_shape[1]  # number of keypoints total
+
+        # CV3
+        c3 = max(ch[0], min(self.nc, 100))  # channels
+        # Light cls head
+        self.cv3 = nn.ModuleList(
+            nn.Sequential(
+                nn.Sequential(Conv(x, x, 3, g=x), Conv(x, c3, 1)),
+                nn.Sequential(Conv(c3, c3, 3, g=c3), Conv(c3, c3, 1)),
+                nn.Conv2d(c3, self.nc, 1),
+            )
+            for x in ch
+        )
+        self.block_parameters['cv3'] = sum(x.numel() for x in self.cv3.parameters())
+        
+        # CV4
+        c4 = max(ch[0] // 4, self.nk)
+        self.cv4 = nn.ModuleList(nn.Sequential(Conv(x, c4, 3), Conv(c4, c4, 3), nn.Conv2d(c4, self.nk, 1)) for x in ch)
+        self.block_parameters['cv4'] = sum(x.numel() for x in self.cv4.parameters())
+        
+    def forward(self, x):
+        """Perform forward pass through YOLO model and return predictions."""
+        bs = x[0].shape[0]  # batch size
+              
+        if self.quant:
+            kpt = torch.cat([self.cv4[i](x[i]) for i in range(self.nl)], -1)  # (bs, 17*3, h, w)
+            
+            for i in range(self.nl):
+                x[i] = self.cv3[i](x[i])
+            x = torch.cat(x, -1) # (bs, nc, h, w)
+            
+            x = torch.cat((x, kpt), 1)
+            return x
+        
+        kpt = torch.cat([self.cv4[i](x[i]).view(bs, self.nk, -1) for i in range(self.nl)], -1)  # (bs, 17*3, h*w)
+         
+        x = Detect.forward(self, x)
+        
+        if self.training:
+            return x, kpt
+   
+        pred_kpt = self.kpts_decode(bs, kpt)
+        return torch.cat([x, pred_kpt], 1) if self.export else (torch.cat([x[0], pred_kpt], 1), (x[1], kpt))
+
+    def kpts_decode(self, bs, kpts):
+        """Decodes keypoints."""
+        ndim = self.kpt_shape[1]
+        if self.export:  # required for TFLite export to avoid 'PLACEHOLDER_FOR_GREATER_OP_CODES' bug
+            y = kpts.view(bs, *self.kpt_shape, -1)
+            a = (y[:, :, :2] * 2.0 + (self.anchors - 0.5)) * self.strides
+            if ndim == 3:
+                a = torch.cat((a, y[:, :, 2:3].sigmoid()), 2)
+            return a.view(bs, self.nk, -1)
+        else:
+            y = kpts.clone()
+            if ndim == 3:
+                y[:, 2::3] = y[:, 2::3].sigmoid()  # sigmoid (WARNING: inplace .sigmoid_() Apple MPS bug)
+            y[:, 0::ndim] = (y[:, 0::ndim] * 2.0 + (self.anchors[0] - 0.5)) * self.strides
+            y[:, 1::ndim] = (y[:, 1::ndim] * 2.0 + (self.anchors[1] - 0.5)) * self.strides
+            return y
+# <- (+) add by billy
 
 class Classify(nn.Module):
     """YOLOv8 classification head, i.e. x(b,c1,20,20) to x(b,c2)."""

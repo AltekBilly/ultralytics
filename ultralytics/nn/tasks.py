@@ -6,6 +6,15 @@ from pathlib import Path
 
 import torch
 import torch.nn as nn
+# (+) -> add by billy: FX QAT
+# from torch.ao.quantization import (
+#   get_default_qconfig_mapping,
+#   get_default_qat_qconfig_mapping,
+#   QConfigMapping,
+# )
+import torch.quantization as quant
+# import torch.ao.quantization.quantize_fx as quantize_fx
+# <- (+) add by billy
 
 from ultralytics.nn.modules import (
     AIFI,
@@ -55,6 +64,11 @@ from ultralytics.nn.modules import (
     Segment,
     WorldDetect,
     v10Detect,
+    # (+) -> add by billy: modules of Altek_Landmark
+    Altek_Landmark,
+    CIB,
+    C3CIB,
+    # <- (+) add by billy
 )
 from ultralytics.utils import DEFAULT_CFG_DICT, DEFAULT_CFG_KEYS, LOGGER, colorstr, emojis, yaml_load
 from ultralytics.utils.checks import check_requirements, check_suffix, check_yaml
@@ -65,6 +79,9 @@ from ultralytics.utils.loss import (
     v8OBBLoss,
     v8PoseLoss,
     v8SegmentationLoss,
+    # (+) -> add by billy: loss of  Altek_Landmark
+    Altek_LandmarkLoss,
+    # <- (+) add by billy
 )
 from ultralytics.utils.plotting import feature_visualization
 from ultralytics.utils.torch_utils import (
@@ -134,11 +151,23 @@ class BaseModel(nn.Module):
         """
         y, dt, embeddings = [], [], []  # outputs
         for m in self.model:
-            if m.f != -1:  # if not from previous layer
+            a = str(type(m))
+            if not isinstance(m, (
+                quant.QuantStub,
+                quant.DeQuantStub,
+                torch.ao.nn.quantized.modules.Quantize, 
+                torch.ao.nn.quantized.modules.DeQuantize)
+                              ) and m.f != -1:  # if not from previous layer
                 x = y[m.f] if isinstance(m.f, int) else [x if j == -1 else y[j] for j in m.f]  # from earlier layers
             if profile:
                 self._profile_one_layer(m, x, dt)
             x = m(x)  # run
+            if isinstance(m, (
+                quant.QuantStub, 
+                quant.DeQuantStub,
+                torch.ao.nn.quantized.modules.Quantize, 
+                torch.ao.nn.quantized.modules.DeQuantize)):
+                continue
             y.append(x if m.i in self.save else None)  # save output
             if visualize:
                 feature_visualization(x, m.type, m.i, save_dir=visualize)
@@ -306,7 +335,10 @@ class DetectionModel(BaseModel):
         if nc and nc != self.yaml["nc"]:
             LOGGER.info(f"Overriding model.yaml nc={self.yaml['nc']} with nc={nc}")
             self.yaml["nc"] = nc  # override YAML value
+        # (-/+) -> modfiy by billy: QAT
         self.model, self.save = parse_model(deepcopy(self.yaml), ch=ch, verbose=verbose)  # model, savelist
+        # self.model, self.o_model, self.save = parse_model(deepcopy(self.yaml), ch=ch, verbose=verbose)  # model, savelist
+        # <- (-/+) modfiy by billy: FX QAT
         self.names = {i: f"{i}" for i in range(self.yaml["nc"])}  # default names dict
         self.inplace = self.yaml.get("inplace", True)
         self.end2end = getattr(self.model[-1], "end2end", False)
@@ -321,7 +353,10 @@ class DetectionModel(BaseModel):
                 """Performs a forward pass through the model, handling different Detect subclass types accordingly."""
                 if self.end2end:
                     return self.forward(x)["one2many"]
-                return self.forward(x)[0] if isinstance(m, (Segment, Pose, OBB)) else self.forward(x)
+                # (-/+) -> modfiy by billy
+                # //return self.forward(x)[0] if isinstance(m, (Segment, Pose, OBB)) else self.forward(x)
+                return self.forward(x)[0] if isinstance(m, (Segment, Pose, OBB, Altek_Landmark)) else self.forward(x)
+                # <- (-/+) modfiy by billy
 
             m.stride = torch.tensor([s / x.shape[-2] for x in _forward(torch.zeros(1, ch, s, s))])  # forward
             self.stride = m.stride
@@ -332,7 +367,10 @@ class DetectionModel(BaseModel):
         # Init weights, biases
         initialize_weights(self)
         if verbose:
-            self.info()
+            # (-/+) -> modfiy by billy: Display the parameter information when the input is 256*256
+            # //self.info()
+            self.info(imgsz=256)
+            # <- (-/+) modfiy by billy
             LOGGER.info("")
 
     def _predict_augment(self, x):
@@ -422,6 +460,23 @@ class PoseModel(DetectionModel):
         """Initialize the loss criterion for the PoseModel."""
         return v8PoseLoss(self)
 
+# (+) -> add by billy: add task class for Altek_Landmark
+class Altek_LandmarkModel(DetectionModel):
+    """YOLOv8 altek_landmark model."""
+
+    def __init__(self, cfg="yolov8n-altek_landmark.yaml", ch=3, nc=None, data_kpt_shape=(None, None), verbose=True):
+        """Initialize YOLOv8 Altek model."""
+        if not isinstance(cfg, dict):
+            cfg = yaml_model_load(cfg)  # load model YAML
+        if any(data_kpt_shape) and list(data_kpt_shape) != list(cfg["kpt_shape"]):
+            LOGGER.info(f"Overriding model.yaml kpt_shape={cfg['kpt_shape']} with kpt_shape={data_kpt_shape}")
+            cfg["kpt_shape"] = data_kpt_shape
+        super().__init__(cfg=cfg, ch=ch, nc=nc, verbose=verbose)
+
+    def init_criterion(self):
+        """Initialize the loss criterion for the Altek_LandmarkModel."""
+        return Altek_LandmarkLoss(self)
+# <- (+) add by billy
 
 class ClassificationModel(BaseModel):
     """YOLOv8 classification model."""
@@ -442,7 +497,10 @@ class ClassificationModel(BaseModel):
             self.yaml["nc"] = nc  # override YAML value
         elif not nc and not self.yaml.get("nc", None):
             raise ValueError("nc not specified. Must specify nc in model.yaml or function arguments.")
+        # (-/+) -> modfiy by billy: QAT
         self.model, self.save = parse_model(deepcopy(self.yaml), ch=ch, verbose=verbose)  # model, savelist
+        # self.model, self.o_model, self.save = parse_model(deepcopy(self.yaml), ch=ch, verbose=verbose)  # model, savelist
+        # (-/+) -> modfiy by billy: QAT
         self.stride = torch.Tensor([1])  # no stride constraints
         self.names = {i: f"{i}" for i in range(self.yaml["nc"])}  # default names dict
         self.info()
@@ -939,6 +997,10 @@ def parse_model(d, ch, verbose=True):  # model_dict, input_channels(3)
             PSA,
             SCDown,
             C2fCIB,
+            # (+) -> add by billy
+            CIB,
+            C3CIB
+            # <- (+) add by billy
         }:
             c1, c2 = ch[f], args[0]
             if c2 != nc:  # if c2 not equal to number of classes (i.e. for Classify() output)
@@ -950,7 +1012,7 @@ def parse_model(d, ch, verbose=True):  # model_dict, input_channels(3)
                 )  # num heads
 
             args = [c1, c2, *args[1:]]
-            if m in {BottleneckCSP, C1, C2, C2f, C2fAttn, C3, C3TR, C3Ghost, C3x, RepC3, C2fCIB}:
+            if m in {BottleneckCSP, C1, C2, C2f, C2fAttn, C3, C3TR, C3Ghost, C3x, RepC3, C2fCIB, CIB, C3CIB}:
                 args.insert(2, n)  # number of repeats
                 n = 1
         elif m is AIFI:
@@ -967,7 +1029,10 @@ def parse_model(d, ch, verbose=True):  # model_dict, input_channels(3)
             args = [ch[f]]
         elif m is Concat:
             c2 = sum(ch[x] for x in f)
-        elif m in {Detect, WorldDetect, Segment, Pose, OBB, ImagePoolingAttn, v10Detect}:
+        # (-/+) -> modify by billy
+        # //elif m in {Detect, WorldDetect, Segment, Pose, OBB, ImagePoolingAttn, v10Detect}:
+        elif m in {Detect, WorldDetect, Segment, Pose, OBB, ImagePoolingAttn, v10Detect, Altek_Landmark}:
+        # <- (-/+) modify by billy
             args.append([ch[x] for x in f])
             if m is Segment:
                 args[2] = make_divisible(min(args[2], max_channels) * width, 8)
@@ -988,6 +1053,12 @@ def parse_model(d, ch, verbose=True):  # model_dict, input_channels(3)
         m_.i, m_.f, m_.type = i, f, t  # attach index, 'from' index, type
         if verbose:
             LOGGER.info(f"{i:>3}{str(f):>20}{n_:>3}{m.np:10.0f}  {t:<45}{str(args):<30}")  # print
+            # (+) -> add by billy
+            if isinstance(m_, Altek_Landmark):
+                for block in m_.block_parameters:
+                    LOGGER.info(f"{str(" "):>3}{str(" "):>20}{str(" "):>3}{m_.block_parameters[block]:10.0f}  {block:<45}{str(" "):<30}")  # print
+                    a = block
+            # <- (+) add by billy
         save.extend(x % i for x in ([f] if isinstance(f, int) else f) if x != -1)  # append to savelist
         layers.append(m_)
         if i == 0:
@@ -1060,6 +1131,10 @@ def guess_model_task(model):
             return "pose"
         if m == "obb":
             return "obb"
+        # (+) -> add by billy
+        if m == "altek_landmark":
+            return "altek_landmark"
+        # <- (+) add by billy
 
     # Guess from model cfg
     if isinstance(model, dict):
@@ -1086,6 +1161,10 @@ def guess_model_task(model):
                 return "obb"
             elif isinstance(m, (Detect, WorldDetect, v10Detect)):
                 return "detect"
+            # (+) -> add by billy
+            elif isinstance(m, Altek_Landmark):
+                return "altek_landmark"
+            # <- (+) add by billy
 
     # Guess from model filename
     if isinstance(model, (str, Path)):
@@ -1100,6 +1179,10 @@ def guess_model_task(model):
             return "obb"
         elif "detect" in model.parts:
             return "detect"
+        # (+) -> add by billy
+        elif "-altek_landmark" in model.stem or "altek_landmark" in model.parts:
+            return "altek_landmark"
+        # <- (+) add by billy
 
     # Unable to determine task from model
     LOGGER.warning(
@@ -1107,3 +1190,16 @@ def guess_model_task(model):
         "Explicitly define task for your model, i.e. 'task=detect', 'segment', 'classify','pose' or 'obb'."
     )
     return "detect"  # assume detect
+
+def generate_fuse_list(module, prefix=''):
+    fuse_list = []
+    if isinstance(module, Conv):
+        if isinstance(module.act, nn.ReLU):
+            fuse_list.append([f"{prefix}conv", f"{prefix}bn", f"{prefix}act"])
+        else:
+            fuse_list.append([f"{prefix}conv", f"{prefix}bn"])
+    else:
+        for name, child in module.named_children():
+            full_name = f"{prefix}{name}."
+            fuse_list.extend(generate_fuse_list(child, full_name))
+    return fuse_list

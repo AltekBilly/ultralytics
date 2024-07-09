@@ -103,7 +103,10 @@ class BaseValidator:
         self.callbacks = _callbacks or callbacks.get_default_callbacks()
 
     @smart_inference_mode()
-    def __call__(self, trainer=None, model=None):
+    # (-/+) -> modfiy by billy: QAT
+    # def __call__(self, trainer=None, model=None):
+    def __call__(self, trainer=None, model=None, qat=None):
+    # <- (-/+) modfiy by billy
         """Supports validation of a pre-trained model if passed or a model being trained if trainer is passed (trainer
         gets priority).
         """
@@ -113,6 +116,9 @@ class BaseValidator:
             self.device = trainer.device
             self.data = trainer.data
             self.args.half = self.device.type != "cpu"  # force FP16 val during training
+            # (+) -> add by billy: QAT
+            if qat: self.args.half = False
+            # <- (+) add by billy
             model = trainer.ema.ema or trainer.model
             model = model.half() if self.args.half else model.float()
             # self.model = model

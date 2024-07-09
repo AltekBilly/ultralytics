@@ -16,6 +16,16 @@ OKS_SIGMA = (
     / 10.0
 )
 
+OKS_SIGMA_LANDMARK = (
+    np.array([
+        0.35, 0.35, 0.4, # face
+        0.6, 0.5, 0.5, 0.6, 0.5, 0.5, # mouth
+        0.7, # nose
+        0.8, 0.7, 0.7, 0.8, 0.7, 0.7, # eye_L
+        0.8, 0.7, 0.7, 0.8, 0.7, 0.7, # eye_R
+        0.5, 0.5, # iris
+        ]) / 10.0
+)
 
 def bbox_ioa(box1, box2, iou=False, eps=1e-7):
     """
@@ -1163,6 +1173,177 @@ class PoseMetrics(SegmentMetrics):
         """Returns dictionary of computed performance metrics and statistics."""
         return self.box.curves_results + self.pose.curves_results
 
+# (+) -> add by billy: add metrics class for Altek_Landmark
+class Altek_LandmarkMetrics(SegmentMetrics):
+    """
+    Calculates and aggregates detection and altek_landmark metrics over a given set of classes.
+
+    Args:
+        save_dir (Path): Path to the directory where the output plots should be saved. Default is the current directory.
+        plot (bool): Whether to save the detection and segmentation plots. Default is False.
+        on_plot (func): An optional callback to pass plots path and data when they are rendered. Defaults to None.
+        names (list): List of class names. Default is an empty list.
+
+    Attributes:
+        save_dir (Path): Path to the directory where the output plots should be saved.
+        plot (bool): Whether to save the detection and segmentation plots.
+        on_plot (func): An optional callback to pass plots path and data when they are rendered.
+        names (list): List of class names.
+        box (Metric): An instance of the Metric class to calculate box detection metrics.
+        pose (Metric): An instance of the Metric class to calculate mask segmentation metrics.
+        speed (dict): Dictionary to store the time taken in different phases of inference.
+
+    Methods:
+        process(tp_m, tp_b, conf, pred_cls, target_cls): Processes metrics over the given set of predictions.
+        mean_results(): Returns the mean of the detection and segmentation metrics over all the classes.
+        class_result(i): Returns the detection and segmentation metrics of class `i`.
+        maps: Returns the mean Average Precision (mAP) scores for IoU thresholds ranging from 0.50 to 0.95.
+        fitness: Returns the fitness scores, which are a single weighted combination of metrics.
+        ap_class_index: Returns the list of indices of classes used to compute Average Precision (AP).
+        results_dict: Returns the dictionary containing all the detection and segmentation metrics and fitness score.
+    """
+
+    def __init__(self, save_dir=Path("."), plot=False, on_plot=None, names=()) -> None:
+        """Initialize the Altek_LandmarkMetrics class with directory path, class names, and plotting options."""
+        super().__init__(save_dir, plot, names)
+        self.save_dir = save_dir
+        self.plot = plot
+        self.on_plot = on_plot
+        self.names = names
+        self.box = Metric()
+        self.pose = Metric()
+        self.speed = {"preprocess": 0.0, "inference": 0.0, "loss": 0.0, "postprocess": 0.0}
+        self.task = "altek_landmark"
+
+    def process(self, tp, tp_p, conf, pred_cls, target_cls):
+        """
+        Processes the detection and altek_landmark metrics over the given set of predictions.
+
+        Args:
+            tp (list): List of True Positive boxes.
+            tp_p (list): List of True Positive keypoints.
+            conf (list): List of confidence scores.
+            pred_cls (list): List of predicted classes.
+            target_cls (list): List of target classes.
+        """
+
+        results_pose = ap_per_class(
+            tp_p,
+            conf,
+            pred_cls,
+            target_cls,
+            plot=self.plot,
+            on_plot=self.on_plot,
+            save_dir=self.save_dir,
+            names=self.names,
+            prefix="Pose",
+        )[2:]
+        self.pose.nc = len(self.names)
+        self.pose.update(results_pose)
+        results_box = ap_per_class(
+            tp,
+            conf,
+            pred_cls,
+            target_cls,
+            plot=self.plot,
+            on_plot=self.on_plot,
+            save_dir=self.save_dir,
+            names=self.names,
+            prefix="Box",
+        )[2:]
+        self.box.nc = len(self.names)
+        self.box.update(results_box)
+
+    @property
+    def keys(self):
+        """Returns list of evaluation metric keys."""
+        return [
+            "metrics/precision(B)",
+            "metrics/recall(B)",
+            "metrics/mAP50(B)",
+            "metrics/mAP50-95(B)",
+            "metrics/precision(P)",
+            "metrics/recall(P)",
+            "metrics/mAP50(P)",
+            "metrics/mAP50-95(P)",
+        ]
+
+    def mean_results(self):
+        """Return the mean results of box and pose."""
+        return self.box.mean_results() + self.pose.mean_results()
+
+    def class_result(self, i):
+        """Return the class-wise detection results for a specific class i."""
+        return self.box.class_result(i) + self.pose.class_result(i)
+
+    @property
+    def maps(self):
+        """Returns the mean average precision (mAP) per class for both box and pose detections."""
+        return self.box.maps + self.pose.maps
+
+    @property
+    def fitness(self):
+        """Computes classification metrics and speed using the `targets` and `pred` inputs."""
+        return self.pose.fitness() + self.box.fitness()
+
+    @property
+    def curves(self):
+        """Returns a list of curves for accessing specific metrics curves."""
+        return [
+            "Precision-Recall(B)",
+            "F1-Confidence(B)",
+            "Precision-Confidence(B)",
+            "Recall-Confidence(B)",
+            "Precision-Recall(P)",
+            "F1-Confidence(P)",
+            "Precision-Confidence(P)",
+            "Recall-Confidence(P)",
+        ]
+
+    @property
+    def curves_results(self):
+        """Returns dictionary of computed performance metrics and statistics."""
+        return self.box.curves_results + self.pose.curves_results
+    
+import torchmetrics
+class NormalizedMeanError(torchmetrics.Metric):
+    def __init__(self, pts=None, ref=None, dist_sync_on_step=False):
+        super().__init__(dist_sync_on_step=dist_sync_on_step)
+        self.pts = pts
+        self.ref = ref
+
+        self.add_state("total_objects", default=torch.tensor(0), dist_reduce_fx="sum")
+        self.add_state("total_error", default=torch.tensor(0.0), dist_reduce_fx="sum")
+        
+        self._total_objects = 0.
+        self._total_error = 0.
+        
+    def reset_states(self):
+        self.total_objects = torch.tensor(0).to(self.total_objects.device)
+        self.total_error = torch.tensor(0.0).to(self.total_error.device)
+
+    def update(self, y_true, y_pred):
+        """
+        y_true, y_pred (float32 tensor): Landmarks. Shape: [bs, pts, 2].
+        """
+        bs = y_true.shape[0]
+        self.total_objects += bs
+
+        norm_factor = torch.norm(y_true[:, self.ref[0]] - y_true[:, self.ref[1]], dim=1)  # [bs]
+
+        error = torch.mean(torch.norm(y_true - y_pred, dim=2), dim=1) / norm_factor
+        self.total_error += torch.sum(error)
+        
+        self._total_error = self.total_error.float().item()
+        self._total_objects = self.total_objects.float().item()
+        
+    def compute(self):
+        try:
+            error = self._total_error / (self._total_objects + 1e-32)
+        except:
+            print(f'self.total_error: {self._total_error }, self.total_objects.float(): {self._total_objects}' )
+        return error
+# <- (+) add by billy
 
 class ClassifyMetrics(SimpleClass):
     """

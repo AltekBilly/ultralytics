@@ -51,6 +51,16 @@ from ultralytics.utils.torch_utils import (
     torch_distributed_zero_first,
 )
 
+import torch.quantization as quant
+
+class CustomObserver(quant.MinMaxObserver):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.custom_scale = torch.tensor([1.0 / 255])
+        self.custom_zero_point = torch.tensor([0])
+
+    def calculate_qparams(self):
+        return self.custom_scale, self.custom_zero_point
 
 class BaseTrainer:
     """
@@ -476,6 +486,35 @@ class BaseTrainer:
 
     def save_model(self):
         """Save model training checkpoints with additional metadata."""
+        if (self.qat):
+            _model = deepcopy(self.model)
+            _model.eval()
+            custom_qconfig = quant.QConfig(
+                activation=CustomObserver.with_args(dtype=torch.quint8, qscheme=torch.per_tensor_affine),
+                weight=quant.default_weight_observer)
+            _quant   = quant.QuantStub()
+            _dequant = quant.DeQuantStub()
+            _quant.qconfig   = custom_qconfig
+            _dequant.qconfig = custom_qconfig
+            _quant = quant.prepare_qat(_quant)
+            _dequant = quant.prepare_qat(_dequant)
+
+            for m in _model.modules():
+                m.quant = True
+            model_int8 = _model.to('cpu')
+            model_int8.model = nn.Sequential(_quant, *model_int8.model, _dequant)
+            model_int8 = quant.convert(model_int8).to('cpu')
+            with open('1.txt', 'w') as f:
+                f.write(str(model_int8))
+            # im = torch.quantize_per_tensor(torch.rand([1,3,256,256]), scale=1/255, zero_point=0, dtype=torch.quint8)
+            im = torch.rand([1,3,256,256])
+            ts = torch.jit.trace(model_int8, im, strict=False) 
+            ts.save(self.last)  # save last.pt
+            if self.best_fitness == self.fitness:
+                ts.save(self.best)  # save best.pt
+                
+            return      
+
         import io
 
         import pandas as pd  # scope for faster 'import ultralytics'
@@ -487,9 +526,15 @@ class BaseTrainer:
                 "epoch": self.epoch,
                 "best_fitness": self.best_fitness,
                 "model": None,  # resume and final checkpoints derive from EMA
+                # (-/+) -> modfiy by billy: QAT
                 "ema": deepcopy(self.ema.ema).half(),
+                # "ema": deepcopy(self.ema.get_original_ema()),
+                # <- (-/+) modfiy by billy
                 "updates": self.ema.updates,
+                # (-/+) -> modfiy by billy: QAT
                 "optimizer": convert_optimizer_state_dict_to_fp16(deepcopy(self.optimizer.state_dict())),
+                # "optimizer": deepcopy(self.optimizer.state_dict()),
+                # <- (-/+) modfiy by billy
                 "train_args": vars(self.args),  # save as dict
                 "train_metrics": {**self.metrics, **{"fitness": self.fitness}},
                 "train_results": {k.strip(): v for k, v in pd.read_csv(self.csv).to_dict(orient="list").items()},
@@ -567,7 +612,10 @@ class BaseTrainer:
 
         The returned dict is expected to contain "fitness" key.
         """
-        metrics = self.validator(self)
+        # (-/+) ->　modfiy by billy: QAT
+        # //metrics = self.validator(self)
+        metrics = self.validator(self, qat=self.qat)
+        # <- (-/+) modfiy by billy
         fitness = metrics.pop("fitness", -self.loss.detach().cpu().numpy())  # use loss as fitness measure if not found
         if not self.best_fitness or self.best_fitness < fitness:
             self.best_fitness = fitness

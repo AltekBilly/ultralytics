@@ -57,7 +57,10 @@ class YOLODataset(BaseDataset):
     def __init__(self, *args, data=None, task="detect", **kwargs):
         """Initializes the YOLODataset with optional configurations for segments and keypoints."""
         self.use_segments = task == "segment"
-        self.use_keypoints = task == "pose"
+        # (-/+) -> modfiy by billy
+        # //self.use_keypoints = task == "pose"
+        self.use_keypoints = task == "pose" or task == "altek_landmark"
+        # <- (-/+) modfiy by billy
         self.use_obb = task == "obb"
         self.data = data
         assert not (self.use_segments and self.use_keypoints), "Can not use both segments and keypoints."

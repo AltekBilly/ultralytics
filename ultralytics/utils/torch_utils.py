@@ -489,6 +489,16 @@ class ModelEMA:
         if self.enabled:
             copy_attr(self.ema, model, include, exclude)
 
+    # (+) -> add by billy: QAT
+    # def get_original_ema(self):
+    #     """Reset EMA to the original model state (without torch.fx parameters)."""
+    #     original_model_state_dict = {k: v for k, v in self.ema.model.state_dict().items() if not (any(substr in k for substr in ['_packed_params', 'activation_post_process', 'fake_quant', 'observer', 'weight_fake_quant']))}
+    #     ema = deepcopy(self.ema)
+    #     ema.model = ema.o_model
+    #     ema.o_model = None
+    #     ema.model.load_state_dict(original_model_state_dict)
+    #     return ema
+    # <- (+) add by billy
 
 def strip_optimizer(f: Union[str, Path] = "best.pt", s: str = "") -> None:
     """
@@ -523,7 +533,9 @@ def strip_optimizer(f: Union[str, Path] = "best.pt", s: str = "") -> None:
     for k in "optimizer", "best_fitness", "ema", "updates":  # keys
         x[k] = None
     x["epoch"] = -1
+    # (-) -> remove by billy: QAT
     x["model"].half()  # to FP16
+    # <- (-) remove by billy
     for p in x["model"].parameters():
         p.requires_grad = False
     x["train_args"] = {k: v for k, v in args.items() if k in DEFAULT_CFG_KEYS}  # strip non-default keys

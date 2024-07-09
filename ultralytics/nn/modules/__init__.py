@@ -53,6 +53,10 @@ from .block import (
     RepVGGDW,
     ResNetLayer,
     SCDown,
+    # (+) -> add by billy
+    CIB,
+    C3CIB,
+    # <- (+) add by billy
 )
 from .conv import (
     CBAM,
@@ -68,8 +72,14 @@ from .conv import (
     LightConv,
     RepConv,
     SpatialAttention,
+    # (+) -> add by billy 
+    _Conv,
+    # <- (+) add by billy
 )
-from .head import OBB, Classify, Detect, Pose, RTDETRDecoder, Segment, WorldDetect, v10Detect
+# (-/+) -> modfiy by billy
+# //from .head import OBB, Classify, Detect, Pose, RTDETRDecoder, Segment, WorldDetect, v10Detect
+from .head import OBB, Classify, Detect, Pose, RTDETRDecoder, Segment, WorldDetect, v10Detect, Altek_Landmark
+# <- (-/+) modfiy by billy
 from .transformer import (
     AIFI,
     MLP,
@@ -150,4 +160,10 @@ __all__ = (
     "Attention",
     "PSA",
     "SCDown",
+    # (+) -> add by billy
+    "Altek_Landmark",
+    "CIB",
+    "C3CIB",
+    "_Conv",
+    # <- (+) add by billy
 )

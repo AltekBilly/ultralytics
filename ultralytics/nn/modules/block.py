@@ -4,10 +4,11 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torch.nn.quantized
 
 from ultralytics.utils.torch_utils import fuse_conv_and_bn
 
-from .conv import Conv, DWConv, GhostConv, LightConv, RepConv, autopad
+from .conv import Conv, DWConv, GhostConv, LightConv, RepConv, autopad, _Conv
 from .transformer import TransformerBlock
 
 __all__ = (
@@ -46,6 +47,9 @@ __all__ = (
     "Attention",
     "PSA",
     "SCDown",
+    # (+) -> add by billy
+    "C3CIB",
+    # <- (+) add by billy
 )
 
 
@@ -253,6 +257,9 @@ class C3(nn.Module):
         """Initialize the CSP Bottleneck with given channels, number, shortcut, groups, and expansion values."""
         super().__init__()
         c_ = int(c2 * e)  # hidden channels
+        # (+) -> add by billy
+        self.c_ = c_  # hidden channels
+        # <- (+) add by billy
         self.cv1 = Conv(c1, c_, 1, 1)
         self.cv2 = Conv(c1, c_, 1, 1)
         self.cv3 = Conv(2 * c_, c2, 1)  # optional act=FReLU(c2)
@@ -343,10 +350,12 @@ class Bottleneck(nn.Module):
         self.cv1 = Conv(c1, c_, k[0], 1)
         self.cv2 = Conv(c_, c2, k[1], 1, g=g)
         self.add = shortcut and c1 == c2
+        self.ff = torch.nn.quantized.FloatFunctional()
 
     def forward(self, x):
         """'forward()' applies the YOLO FPN to input data."""
-        return x + self.cv2(self.cv1(x)) if self.add else self.cv2(self.cv1(x))
+        # return x + self.cv2(self.cv1(x)) if self.add else self.cv2(self.cv1(x))
+        return self.ff.add(x, self.cv2(self.cv1(x))) if self.add else self.cv2(self.cv1(x))
 
 
 class BottleneckCSP(nn.Module):
@@ -942,6 +951,11 @@ class SCDown(nn.Module):
         super().__init__()
         self.cv1 = Conv(c1, c2, 1, 1)
         self.cv2 = Conv(c2, c2, k=k, s=s, g=c2, act=False)
+        # self.cv = _Conv(c1, c2, k=k, s=s)
+        # self.depthwise = nn.Conv2d(c1, c1, kernel_size=k, stride=s, padding=autopad(k, None, 1), groups=c1, bias=False)
+        # self.pointwise = nn.Conv2d(c1, c2, kernel_size=1, stride=1, bias=False)
+        # self.bn = nn.BatchNorm2d(c2)
+        # self.relu = nn.ReLU()
 
     def forward(self, x):
         """
@@ -954,3 +968,18 @@ class SCDown(nn.Module):
             (torch.Tensor): Output tensor after applying the SCDown module.
         """
         return self.cv2(self.cv1(x))
+        x=self.depthwise(x)
+        x=self.pointwise(x)
+        x=self.bn(x)
+        x=self.relu(x)
+        return x
+
+# (+) -> add by billy
+class C3CIB(C3):
+    """C3CIB class represents a convolutional block with C3 and CIB modules."""
+    
+    def __init__(self, c1, c2, n=1, shortcut=True, g=1, e=0.5):
+        """Initialize the CSP Bottleneck with given channels, number, shortcut, groups, and expansion values."""
+        super().__init__(c1, c2, n, shortcut, g, e)
+        self.m = nn.Sequential(*(CIB(self.c_, self.c_, shortcut, e=1.0) for _ in range(n)))
+# <- (+) add by billy
