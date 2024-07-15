@@ -7,6 +7,9 @@ from ultralytics.nn.tasks import Altek_LandmarkModel, generate_fuse_list
 from ultralytics.utils import DEFAULT_CFG, LOGGER
 from ultralytics.utils.plotting import plot_images, plot_results
 
+import torch.quantization as quant
+import torch
+
 class Altek_LandmarkTrainer(yolo.detect.DetectionTrainer):
     """
     A class extending the DetectionTrainer class for training based on a altek_landmark model.
@@ -43,19 +46,32 @@ class Altek_LandmarkTrainer(yolo.detect.DetectionTrainer):
             model.load(weights)
 
         if self.qat:
-            import torch.quantization as quant
-            import torch
+            default_qconfig = quant.get_default_qat_qconfig('qnnpack')
+            custom_qconfig = quant.QConfig(
+                activation=CustomObserver.with_args(dtype=torch.quint8, qscheme=torch.per_tensor_affine),
+                weight=default_qconfig.weight)    
+            _quant   = quant.QuantStub()
+            _dequant = quant.DeQuantStub()
+            _quant.qconfig   = custom_qconfig
+            _dequant.qconfig = custom_qconfig
+            _quant = quant.prepare_qat(_quant)
+            # _dequant = quant.prepare_qat(_dequant)
             
-            list = []
-            for m in model.model:
+            list = [_quant]
+            model.model[-1].qat = True
+            for idx, m in enumerate(model.model):
                 fuse_list = generate_fuse_list(m)
                 m = quant.fuse_modules(m.eval(), fuse_list)
-                m.qconfig = quant.get_default_qat_qconfig('qnnpack')
-                m = quant.prepare_qat(m.train(), inplace=True)
-                list.append(m)
+                m.qconfig = default_qconfig #custom_qconfig
+
+                # if idx == len(model.model) - 1:
+                #     m.DeQuantStub = _dequant
                 
+                m = quant.prepare_qat(m.train(), inplace=True)
+                list.append(m)  
+            
             model.model = torch.nn.Sequential(*list)
-        
+            
         return model
 
     def set_model_attributes(self):
@@ -92,3 +108,12 @@ class Altek_LandmarkTrainer(yolo.detect.DetectionTrainer):
     def plot_metrics(self):
         """Plots training/val metrics."""
         plot_results(file=self.csv, pose=True, on_plot=self.on_plot)  # save results.png
+
+class CustomObserver(quant.MinMaxObserver):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.custom_scale = torch.tensor([1.0 / 255])
+        self.custom_zero_point = torch.tensor([0])
+
+    def calculate_qparams(self):
+        return self.custom_scale, self.custom_zero_point

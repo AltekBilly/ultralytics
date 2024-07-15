@@ -10,7 +10,7 @@ import cv2
 
 home_path = os.path.expanduser("~")
 
-date = "20240709"
+date = "20240712"
 
 model_list = [
     # 0 pose
@@ -118,16 +118,16 @@ model_list = [
         "task": "altek_landmark",
         "name": "Altek_Landmark-FacialLandmark-test-" + date + "-stride64-qat-",
     },
-    # 15 stride 32 - 20240709
+    # 15 stride 32 - 20240715
     {
-        "model": "yolov8n-Altek_Landmark-altek_FacailLandmark-20240709.yaml", 
+        "model": "yolov8n-Altek_Landmark-altek_FacailLandmark-20240715.yaml", 
         "cfg": "Altek_Landmark-altek_FacialLandmark_train_cfg.yaml", 
         "task": "altek_landmark",
         "name": "Altek_Landmark-FacialLandmark-test-" + date + "-",
     },
 ]
 
-model_idx = 2
+model_idx = 15
 
 # Set path
 model_path = model_list[model_idx]["model"]
@@ -135,7 +135,7 @@ cfg_path = model_list[model_idx]["cfg"]
 name = model_list[model_idx]["name"] # "test-qat-model" # 
 
 # Load a model
-model_path = './runs/altek_landmark/Altek_Landmark-FacialLandmark-test-20240709-stride64-/weights/best.pt'
+# model_path = './runs/altek_landmark/Altek_Landmark-FacialLandmark-test-20240709-stride64-3/weights/best.pt'
 
 # Set task
 task = model_list[model_idx]["task"]
@@ -149,7 +149,7 @@ results = model.train(
     cfg=cfg_path, 
     name=name, 
     # batch= 1000,
-    # epochs=1
+    # epochs=10
     )
 
 # Export the model

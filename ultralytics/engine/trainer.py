@@ -254,11 +254,16 @@ class BaseTrainer:
         always_freeze_names = [".dfl"]  # always freeze these layers
         freeze_layer_names = [f"model.{x}." for x in freeze_list] + always_freeze_names
         for k, v in self.model.named_parameters():
+            print(f'{k} is {v.dtype}, requires_grad[{v.requires_grad}]')
             # v.register_hook(lambda x: torch.nan_to_num(x))  # NaN to 0 (commented for erratic training results)
             if any(x in k for x in freeze_layer_names):
                 LOGGER.info(f"Freezing layer '{k}'")
                 v.requires_grad = False
             elif not v.requires_grad and v.dtype.is_floating_point:  # only floating point Tensor can require gradients
+                # (+) -> add by billy: QAT
+                if self.qat and 'bias' in k:
+                    continue
+                # <- (+) -> add by billy
                 LOGGER.info(
                     f"WARNING ⚠️ setting 'requires_grad=True' for frozen layer '{k}'. "
                     "See ultralytics.engine.trainer for customization of frozen layers."
@@ -489,20 +494,24 @@ class BaseTrainer:
         if (self.qat):
             _model = deepcopy(self.model)
             _model.eval()
-            custom_qconfig = quant.QConfig(
-                activation=CustomObserver.with_args(dtype=torch.quint8, qscheme=torch.per_tensor_affine),
-                weight=quant.default_weight_observer)
-            _quant   = quant.QuantStub()
-            _dequant = quant.DeQuantStub()
-            _quant.qconfig   = custom_qconfig
-            _dequant.qconfig = custom_qconfig
-            _quant = quant.prepare_qat(_quant)
-            _dequant = quant.prepare_qat(_dequant)
-
-            for m in _model.modules():
+            # custom_qconfig = quant.QConfig(
+            #     activation=CustomObserver.with_args(dtype=torch.quint8, qscheme=torch.per_tensor_affine),
+            #     weight=quant.default_weight_observer)
+            # _quant   = quant.QuantStub()
+            # _dequant = quant.DeQuantStub()
+            # _quant.qconfig   = custom_qconfig
+            # _dequant.qconfig = custom_qconfig
+            # _quant = quant.prepare_qat(_quant)
+            # _dequant = quant.prepare_qat(_dequant)
+            # dequant_tuple = DeQuantTuple(_dequant)
+            # dequant_tuple.f = -1
+            
+            for m in _model.model:
                 m.quant = True
             model_int8 = _model.to('cpu')
-            model_int8.model = nn.Sequential(_quant, *model_int8.model, _dequant)
+            # 将所有模块展开并直接放入一个新的 nn.Sequential 中
+            # modules = [_quant] + list(model_int8.model) + [dequant_tuple]
+            # model_int8.model = nn.Sequential(*modules)
             model_int8 = quant.convert(model_int8).to('cpu')
             with open('1.txt', 'w') as f:
                 f.write(str(model_int8))
@@ -820,3 +829,12 @@ class BaseTrainer:
             f'{len(g[1])} weight(decay=0.0), {len(g[0])} weight(decay={decay}), {len(g[2])} bias(decay=0.0)'
         )
         return optimizer
+
+class DeQuantTuple(nn.Module):
+    def __init__(self, dequant):
+        super(DeQuantTuple, self).__init__()
+        self.dequant = dequant
+        
+    def forward(self, x):
+        # 假设输出是包含两个tensor的tuple
+        return tuple(self.dequant(t) for t in x)

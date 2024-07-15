@@ -151,7 +151,6 @@ class BaseModel(nn.Module):
         """
         y, dt, embeddings = [], [], []  # outputs
         for m in self.model:
-            a = str(type(m))
             if not isinstance(m, (
                 quant.QuantStub,
                 quant.DeQuantStub,
@@ -166,7 +165,7 @@ class BaseModel(nn.Module):
                 quant.QuantStub, 
                 quant.DeQuantStub,
                 torch.ao.nn.quantized.modules.Quantize, 
-                torch.ao.nn.quantized.modules.DeQuantize)):
+                torch.ao.nn.quantized.modules.DeQuantize)) or hasattr(m, 'dequant'):
                 continue
             y.append(x if m.i in self.save else None)  # save output
             if visualize:

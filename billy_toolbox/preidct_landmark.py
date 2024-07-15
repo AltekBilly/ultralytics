@@ -6,7 +6,7 @@ import cv2
 home_path = os.path.expanduser("~")
 
 # Load a model
-name = 'Altek_Landmark-FacialLandmark-test-20240701-stride64-CIB-reg_max4-2'
+name = 'Altek_Landmark-FacialLandmark-test-20240709-stride64-3'
 model_path = f'./runs/altek_landmark/{name}/weights/best.pt'
 # model_path = './runs/pose/AltekPose-altek_FacialLandmark-test-20240626-2/weights/best.pt'
 model = YOLO(model_path)  # load a custom model

@@ -48,6 +48,7 @@ class Detect(nn.Module):
         self.dfl = DFL(self.reg_max) if self.reg_max > 1 else nn.Identity()
 
         # (+) -> add by billy: QAT
+        self.qat = False
         self.quant = False
         # m.np = sum(x.numel() for x in m_.parameters())
         self.block_parameters = {
@@ -302,8 +303,15 @@ class Altek_Landmark(Detect):
         self.cv4 = nn.ModuleList(nn.Sequential(Conv(x, c4, 3), Conv(c4, c4, 3), nn.Conv2d(c4, self.nk, 1)) for x in ch)
         self.block_parameters['cv4'] = sum(x.numel() for x in self.cv4.parameters())
         
+        import torch.quantization as quant
+        # self.QuantStub = quant.QuantStub()
+        self.DeQuantStub = quant.DeQuantStub()
+        
     def forward(self, x):
         """Perform forward pass through YOLO model and return predictions."""
+        # if self.qat:
+        #     x = [self.QuantStub(_x) for _x in x]
+            
         bs = x[0].shape[0]  # batch size
               
         if self.quant:
@@ -313,13 +321,17 @@ class Altek_Landmark(Detect):
                 x[i] = self.cv3[i](x[i])
             x = torch.cat(x, -1) # (bs, nc, h, w)
             
-            x = torch.cat((x, kpt), 1)
-            return x
+            # x = torch.cat((x, kpt), 1)
+            return self.DeQuantStub(x), self.DeQuantStub(kpt)
         
         kpt = torch.cat([self.cv4[i](x[i]).view(bs, self.nk, -1) for i in range(self.nl)], -1)  # (bs, 17*3, h*w)
          
         x = Detect.forward(self, x)
         
+        if self.qat:
+            x = self.DeQuantStub(x)
+            kpt = self.DeQuantStub(kpt)
+             
         if self.training:
             return x, kpt
    

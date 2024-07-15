@@ -157,7 +157,7 @@ def main(pts: int, nme_ref: list, input_size: int, targets, preds):
 if __name__ == '__main__':
     home_path = os.path.expanduser("~")
     true_label_dir = f'{home_path}/dataset/FacialLandmark_for_yolov8-pose-20240628/labels/val'
-    name = 'Altek_Landmark-FacialLandmark-test-20240701-stride64-CIB-reg_max4-2'
+    name = 'Altek_Landmark-FacialLandmark-test-20240709-stride64-3'
     pred_label_dir = f'./runs/altek_landmark/preidct_{name}/labels' 
     # pred_label_dir = f'./runs/pose/predict6/labels' #
     
