@@ -10,13 +10,14 @@ import cv2
 
 home_path = os.path.expanduser("~")
 
-date = "20240712"
+date = "20240716"
 
 model_list = [
     # 0 pose
     {
         "model": "yolov8n-AltekPose-altek_FacailLandmark.yaml", 
         "cfg": "AltekPose-altek_FacialLandmark_train_cfg.yaml", 
+        "data": "altek-FacialLandmark.yaml",
         "task": "pose",
         "name": "AltekPose-altek_FacialLandmark-test-" + date + "-",
     },
@@ -24,6 +25,7 @@ model_list = [
     {
         "model": "yolov8n-Altek_Landmark-altek_FacailLandmark.yaml", 
         "cfg": "Altek_Landmark-altek_FacialLandmark_train_cfg.yaml", 
+        "data": "altek-FacialLandmark.yaml",
         "task": "altek_landmark",
         "name": "Altek_Landmark-FacialLandmark-test-" + date + "-",
     },
@@ -31,6 +33,7 @@ model_list = [
     {
         "model": "yolov8n-Altek_Landmark-altek_FacailLandmark-stride64.yaml", 
         "cfg": "Altek_Landmark-altek_FacialLandmark-stride64_train_cfg.yaml",
+        "data": "altek-FacialLandmark.yaml",
         "task": "altek_landmark",
         "name": "Altek_Landmark-FacialLandmark-test-" + date + "-stride64-",
     },
@@ -38,6 +41,7 @@ model_list = [
     {
         "model": "yolov8n-Altek_Landmark-altek_FacailLandmark-stride128.yaml", 
         "cfg": "Altek_Landmark-altek_FacialLandmark-stride128_train_cfg.yaml",
+        "data": "altek-FacialLandmark.yaml",
         "task": "altek_landmark",
         "name": "Altek_Landmark-FacialLandmark-test-" + date + "-stride128-",
     },
@@ -45,6 +49,7 @@ model_list = [
     {
         "model": "yolov8n-Altek_Landmark-altek_FacailLandmark-stride16.yaml", 
         "cfg": "Altek_Landmark-altek_FacialLandmark-stride16_train_cfg.yaml",
+        "data": "altek-FacialLandmark.yaml",
         "task": "altek_landmark",
         "name": "Altek_Landmark-FacialLandmark-test-" + date + "-stride16-",
     },
@@ -52,6 +57,7 @@ model_list = [
     {
         "model": "yolov8n-Altek_Landmark-altek_FacailLandmark-stride64-512.yaml", 
         "cfg": "Altek_Landmark-altek_FacialLandmark-stride64-512_train_cfg.yaml",
+        "data": "altek-FacialLandmark.yaml",
         "task": "altek_landmark",
         "name": "Altek_Landmark-FacialLandmark-test-" + date + "-stride64-512-",
     },
@@ -59,6 +65,7 @@ model_list = [
     {
         "model": "yolov8n-Altek_Landmark-altek_FacailLandmark-512.yaml", 
         "cfg": "Altek_Landmark-altek_FacialLandmark-512_train_cfg.yaml", 
+        "data": "altek-FacialLandmark.yaml",
         "task": "altek_landmark",
         "name": "Altek_Landmark-FacialLandmark-test-" + date + "-512-",
     },
@@ -66,6 +73,7 @@ model_list = [
     {
         "model": "yolov8n-Altek_Landmark-altek_FacailLandmark-128.yaml", 
         "cfg": "Altek_Landmark-altek_FacialLandmark_train_cfg.yaml", 
+        "data": "altek-FacialLandmark.yaml",
         "task": "altek_landmark",
         "name": "Altek_Landmark-FacialLandmark-test-" + date + "-128-",
     },
@@ -73,6 +81,7 @@ model_list = [
     {
         "model": "yolov8n-Altek_Landmark-altek_FacailLandmark-stride64-0701.yaml", 
         "cfg": "Altek_Landmark-altek_FacialLandmark-stride64-20240701_train_cfg.yaml",
+        "data": "altek-FacialLandmark.yaml",
         "task": "altek_landmark",
         "name": "Altek_Landmark-FacialLandmark-test-" + date + "-stride64-20240701-",
     },
@@ -80,6 +89,7 @@ model_list = [
     {
         "model": "yolov8n-Altek_Landmark-altek_FacailLandmark-stride64-C1.yaml", 
         "cfg": "Altek_Landmark-altek_FacialLandmark-stride64_train_cfg.yaml",
+        "data": "altek-FacialLandmark.yaml",
         "task": "altek_landmark",
         "name": "Altek_Landmark-FacialLandmark-test-" + date + "-stride64-C1-",
     },
@@ -87,6 +97,7 @@ model_list = [
     {
         "model": "yolov8n-Altek_Landmark-altek_FacailLandmark-stride64-Bottleneck.yaml", 
         "cfg": "Altek_Landmark-altek_FacialLandmark-stride64_train_cfg.yaml",
+        "data": "altek-FacialLandmark.yaml",
         "task": "altek_landmark",
         "name": "Altek_Landmark-FacialLandmark-test-" + date + "-stride64-Bottleneck-",
     },
@@ -94,6 +105,7 @@ model_list = [
     {
         "model": "yolov8n-Altek_Landmark-altek_FacailLandmark-stride64-ResNetBlock.yaml", 
         "cfg": "Altek_Landmark-altek_FacialLandmark-stride64_train_cfg.yaml",
+        "data": "altek-FacialLandmark.yaml",
         "task": "altek_landmark",
         "name": "Altek_Landmark-FacialLandmark-test-" + date + "-stride64-ResNetBlock-",
     },
@@ -101,6 +113,7 @@ model_list = [
     {
         "model": "yolov8n-Altek_Landmark-altek_FacailLandmark-stride64-CIB.yaml", 
         "cfg": "Altek_Landmark-altek_FacialLandmark-stride64_train_cfg.yaml",
+        "data": "altek-FacialLandmark.yaml",
         "task": "altek_landmark",
         "name": "Altek_Landmark-FacialLandmark-test-" + date + "-stride64-CIB-",
     },
@@ -108,6 +121,7 @@ model_list = [
     {
         "model": "yolov8n-Altek_Landmark-altek_FacailLandmark-stride64-C3CIB.yaml", 
         "cfg": "Altek_Landmark-altek_FacialLandmark-stride64_train_cfg.yaml",
+        "data": "altek-FacialLandmark.yaml",
         "task": "altek_landmark",
         "name": "Altek_Landmark-FacialLandmark-test-" + date + "-stride64-C3CIB-",
     },
@@ -115,6 +129,7 @@ model_list = [
     {
         "model": "yolov8n-Altek_Landmark-altek_FacailLandmark-stride64.yaml", 
         "cfg": "Altek_Landmark-altek_FacialLandmark-stride64_qat_train_cfg.yaml",
+        "data": "altek-FacialLandmark.yaml",
         "task": "altek_landmark",
         "name": "Altek_Landmark-FacialLandmark-test-" + date + "-stride64-qat-",
     },
@@ -122,20 +137,39 @@ model_list = [
     {
         "model": "yolov8n-Altek_Landmark-altek_FacailLandmark-20240715.yaml", 
         "cfg": "Altek_Landmark-altek_FacialLandmark_train_cfg.yaml", 
+        "data": "altek-FacialLandmark.yaml",
         "task": "altek_landmark",
         "name": "Altek_Landmark-FacialLandmark-test-" + date + "-",
     },
+    # 16 stride 32 - 20240715 - qat
+    {
+        "model": "yolov8n-Altek_Landmark-altek_FacailLandmark-20240715.yaml", 
+        "cfg": "Altek_Landmark-altek_FacialLandmark_qat_train_cfg.yaml", 
+        "data": "altek-FacialLandmark.yaml",
+        "task": "altek_landmark",
+        "name": "Altek_Landmark-FacialLandmark-test-" + date + "-qat-",
+    },
+    # 17 stride 32 - Visible 
+    {
+        "model": "yolov8n-Altek_Landmark-altek_FacailLandmark-20240715.yaml", 
+        "cfg": "Altek_Landmark-altek_FacialLandmark_train_cfg.yaml", 
+        "data": "altek-FacialLandmark_Visible.yaml",
+        "task": "altek_landmark",
+        "name": "Altek_Landmark-FacialLandmark-Visible-" + date + "-",
+    },
+    
 ]
 
-model_idx = 15
+model_idx = 17
 
 # Set path
 model_path = model_list[model_idx]["model"]
 cfg_path = model_list[model_idx]["cfg"]
+data = model_list[model_idx]["data"]
 name = model_list[model_idx]["name"] # "test-qat-model" # 
 
 # Load a model
-# model_path = './runs/altek_landmark/Altek_Landmark-FacialLandmark-test-20240709-stride64-3/weights/best.pt'
+# model_path = './runs/altek_landmark/Altek_Landmark-FacialLandmark-test-20240715-2/weights/best.pt'
 
 # Set task
 task = model_list[model_idx]["task"]
@@ -145,7 +179,7 @@ model = YOLO(model=model_path, task=task)#.load(model_path)  # build from YAML a
 
 # Train the model
 results = model.train(
-    data='altek-FacialLandmark.yaml', 
+    data=data, 
     cfg=cfg_path, 
     name=name, 
     # batch= 1000,
