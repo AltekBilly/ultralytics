@@ -513,8 +513,8 @@ class BaseTrainer:
             # modules = [_quant] + list(model_int8.model) + [dequant_tuple]
             # model_int8.model = nn.Sequential(*modules)
             model_int8 = quant.convert(model_int8).to('cpu')
-            with open('1.txt', 'w') as f:
-                f.write(str(model_int8))
+            # with open('1.txt', 'w') as f:
+            #     f.write(str(model_int8))
             # im = torch.quantize_per_tensor(torch.rand([1,3,256,256]), scale=1/255, zero_point=0, dtype=torch.quint8)
             im = torch.rand([1,3,256,256])
             ts = torch.jit.trace(model_int8, im, strict=False) 

@@ -10,7 +10,7 @@ import cv2
 
 home_path = os.path.expanduser("~")
 
-date = "20240718"
+date = "20240830"
 
 model_list = [
     # 0 pose
@@ -157,7 +157,7 @@ model_list = [
         "task": "altek_landmark",
         "name": "Altek_Landmark-FacialLandmark-Visible-" + date + "-",
     },
-    # 18 stride 32 - Visible -qat
+    # 18 stride 32 - Visible - qat
     {
         "model": "yolov8n-Altek_Landmark-altek_FacailLandmark-20240715.yaml", 
         "cfg": "Altek_Landmark-altek_FacialLandmark_qat_train_cfg.yaml", 
@@ -173,18 +173,34 @@ model_list = [
         "task": "altek_landmark",
         "name": "Altek_Landmark-FacialLandmark-merl_rav-" + date + "-",
     },
+    # 20 stride 32 - merl_rav - qat
+    {
+        "model": "yolov8n-Altek_Landmark-altek_FacailLandmark-merl_rav.yaml", 
+        "cfg": "Altek_Landmark-altek_FacialLandmark_qat_train_cfg.yaml", 
+        "data": "altek-FacialLandmark-merl_rav.yaml",
+        "task": "altek_landmark",
+        "name": "Altek_Landmark-FacialLandmark-merl_rav-" + date + "-qat-",
+    },
+     # 21 stride 32 - merl_rav - 20kpts
+    {
+        "model": "yolov8-Altek_Landmark-altek_FacailLandmark-merl_rav-20p.yaml", 
+        "cfg": "Altek_Landmark-altek_FacialLandmark_train_cfg.yaml", 
+        "data": "altek-FacialLandmark-merl_rav-20p.yaml",
+        "task": "altek_landmark",
+        "name": "Altek_Landmark-FacialLandmark-merl_rav-20p-" + date + "-",
+    },
 ]
 
-model_idx = 19
+model_idx = 21
 
 # Set path
 model_path = model_list[model_idx]["model"]
 cfg_path = model_list[model_idx]["cfg"]
 data = model_list[model_idx]["data"]
-name = model_list[model_idx]["name"] # "test-model" # 
+name = model_list[model_idx]["name"] #  "test-model" # 
 
 # Load a model
-model_path = './runs/altek_landmark/Altek_Landmark-FacialLandmark-merl_rav-20240718-2/weights/best.pt'
+model_path = './runs/altek_landmark/Altek_Landmark-FacialLandmark-merl_rav-20p-20240829-3/weights/best.pt'
 
 # Set task
 task = model_list[model_idx]["task"]
