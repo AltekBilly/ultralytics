@@ -181,7 +181,7 @@ model_list = [
         "task": "altek_landmark",
         "name": "Altek_Landmark-FacialLandmark-merl_rav-" + date + "-qat-",
     },
-     # 21 stride 32 - merl_rav - 20kpts
+    # 21 stride 32 - merl_rav - 20kpts
     {
         "model": "yolov8-Altek_Landmark-altek_FacailLandmark-merl_rav-20p.yaml", 
         "cfg": "Altek_Landmark-altek_FacialLandmark_train_cfg.yaml", 
@@ -189,9 +189,17 @@ model_list = [
         "task": "altek_landmark",
         "name": "Altek_Landmark-FacialLandmark-merl_rav-20p-" + date + "-",
     },
+    # 22 stride 32 - merl_rav - 20kpts -qat
+    {
+        "model": "yolov8-Altek_Landmark-altek_FacailLandmark-merl_rav-20p.yaml", 
+        "cfg": "Altek_Landmark-altek_FacialLandmark_qat_train_cfg.yaml", 
+        "data": "altek-FacialLandmark-merl_rav-20p.yaml",
+        "task": "altek_landmark",
+        "name": "Altek_Landmark-FacialLandmark-merl_rav-20p-" + date + "-qat-",
+    },
 ]
 
-model_idx = 21
+model_idx = 22
 
 # Set path
 model_path = model_list[model_idx]["model"]
@@ -200,7 +208,7 @@ data = model_list[model_idx]["data"]
 name = model_list[model_idx]["name"] #  "test-model" # 
 
 # Load a model
-model_path = './runs/altek_landmark/Altek_Landmark-FacialLandmark-merl_rav-20p-20240829-3/weights/best.pt'
+model_path = './runs/altek_landmark/Altek_Landmark-FacialLandmark-merl_rav-20p-20240830-2/weights/best.pt'
 
 # Set task
 task = model_list[model_idx]["task"]
