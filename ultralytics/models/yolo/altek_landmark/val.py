@@ -83,7 +83,7 @@ class Altek_LandmarkValidator(DetectionValidator):
         nkpt = self.kpt_shape[0]
         self.sigma = OKS_SIGMA if is_altek_landmark else np.ones(nkpt) / nkpt
         self.stats = dict(tp_p=[], tp=[], conf=[], pred_cls=[], target_cls=[], target_img=[])
-        self.NME = NormalizedMeanError(pts=24, ref=[10, 19]).to(self.device)
+        self.NME = NormalizedMeanError(pts=20, ref=[8, 17]).to(self.device)
 
     def _prepare_batch(self, si, batch):
         """Prepares a batch for processing by converting keypoints to float and moving to device."""

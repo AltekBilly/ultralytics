@@ -15,7 +15,7 @@ imgsz: 256 # (int | list) input images size as int for train and val modes, or l
 save: True # (bool) save train checkpoints and predict results
 save_period: -1 # (int) Save checkpoint every x epochs (disabled if < 1)
 cache: False # (bool) True/ram, disk or False. Use cache for data loading
-device: 1 # (int | str | list, optional) device to run on, i.e. cuda device=0 or device=0,1,2,3 or device=cpu
+device: 0 # (int | str | list, optional) device to run on, i.e. cuda device=0 or device=0,1,2,3 or device=cpu
 workers: 8 # (int) number of worker threads for data loading (per RANK if DDP)
 project: # (str, optional) project name
 name: Altek_Landmark-FacialLandmark-test-20240628- # (str, optional) experiment name, results saved to 'project/name' directory
@@ -105,7 +105,7 @@ label_smoothing: 0.0 # (float) label smoothing (fraction)
 nbs: 64 # (int) nominal batch size
 hsv_h: 0.015 # (float) image HSV-Hue augmentation (fraction)
 hsv_s: 0.7 # (float) image HSV-Saturation augmentation (fraction)
-hsv_v: 0.6 # (float) image HSV-Value augmentation (fraction)
+hsv_v: 0.8 # (float) image HSV-Value augmentation (fraction)
 degrees: 30.0 # (float) image rotation (+/- deg)
 translate: 0.2 # (float) image translation (+/- fraction)
 scale: 0.2 # (float) image scale (+/- gain)

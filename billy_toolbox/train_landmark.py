@@ -10,7 +10,7 @@ import cv2
 
 home_path = os.path.expanduser("~")
 
-date = "20240830"
+date = "20240920"
 
 model_list = [
     # 0 pose
@@ -183,7 +183,7 @@ model_list = [
     },
     # 21 stride 32 - merl_rav - 20kpts
     {
-        "model": "yolov8-Altek_Landmark-altek_FacailLandmark-merl_rav-20p.yaml", 
+        "model": "yolov8n-Altek_Landmark-altek_FacailLandmark-merl_rav-20p.yaml", 
         "cfg": "Altek_Landmark-altek_FacialLandmark_train_cfg.yaml", 
         "data": "altek-FacialLandmark-merl_rav-20p.yaml",
         "task": "altek_landmark",
@@ -191,15 +191,47 @@ model_list = [
     },
     # 22 stride 32 - merl_rav - 20kpts -qat
     {
-        "model": "yolov8-Altek_Landmark-altek_FacailLandmark-merl_rav-20p.yaml", 
+        "model": "yolov8n-Altek_Landmark-altek_FacailLandmark-merl_rav-20p.yaml", 
         "cfg": "Altek_Landmark-altek_FacialLandmark_qat_train_cfg.yaml", 
         "data": "altek-FacialLandmark-merl_rav-20p.yaml",
         "task": "altek_landmark",
         "name": "Altek_Landmark-FacialLandmark-merl_rav-20p-" + date + "-qat-",
     },
+    # 23 stride 32 - FaceSynthetics - 20kpts
+    {
+        "model": "yolov8n-Altek_Landmark-altek_FacailLandmark-FaceSynthetics-20p.yaml", 
+        "cfg": "Altek_Landmark-altek_FacialLandmark_train_cfg.yaml", 
+        "data": "altek-FacialLandmark-FaceSynthetics-20p.yaml",
+        "task": "altek_landmark",
+        "name": "Altek_Landmark-FacialLandmark-FaceSynthetics-20p-" + date + "-",
+    },
+    # 24 stride 32 - FaceSynthetics - 20kpts -qat
+    {
+        "model": "yolov8n-Altek_Landmark-altek_FacailLandmark-FaceSynthetics-20p.yaml", 
+        "cfg": "Altek_Landmark-altek_FacialLandmark_qat_train_cfg.yaml", 
+        "data": "altek-FacialLandmark-FaceSynthetics-20p.yaml",
+        "task": "altek_landmark",
+        "name": "Altek_Landmark-FacialLandmark-FaceSynthetics-20p-" + date + "-qat-",
+    },
+    # 25 stride 32 - 3D_MODEL_IR_DATA - 20kpts
+    {
+        "model": "yolov8n-Altek_Landmark-altek_FacailLandmark-3D_MODEL_IR_DATA.yaml", 
+        "cfg": "Altek_Landmark-altek_FacialLandmark_train_cfg.yaml", 
+        "data": "altek-FacialLandmark-3D_MODEL_IR_DATA.yaml",
+        "task": "altek_landmark",
+        "name": "Altek_Landmark-FacialLandmark-3D_MODEL_IR_DATA-" + date + "-",
+    },
+    # 26 stride 32 - 3D_MODEL_IR_DATA - 20kpts -qat
+    {
+        "model": "yolov8n-Altek_Landmark-altek_FacailLandmark-3D_MODEL_IR_DATA.yaml", 
+        "cfg": "Altek_Landmark-altek_FacialLandmark_qat_train_cfg.yaml", 
+        "data": "altek-FacialLandmark-3D_MODEL_IR_DATA.yaml",
+        "task": "altek_landmark",
+        "name": "Altek_Landmark-FacialLandmark-3D_MODEL_IR_DATA-" + date + "-qat-",
+    },
 ]
 
-model_idx = 22
+model_idx = 26
 
 # Set path
 model_path = model_list[model_idx]["model"]
@@ -208,7 +240,7 @@ data = model_list[model_idx]["data"]
 name = model_list[model_idx]["name"] #  "test-model" # 
 
 # Load a model
-model_path = './runs/altek_landmark/Altek_Landmark-FacialLandmark-merl_rav-20p-20240830-2/weights/best.pt'
+model_path = './runs/altek_landmark/Altek_Landmark-FacialLandmark-3D_MODEL_IR_DATA-20240920-3/weights/best.pt'
 
 # Set task
 task = model_list[model_idx]["task"]

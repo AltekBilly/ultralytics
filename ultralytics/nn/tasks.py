@@ -1055,7 +1055,7 @@ def parse_model(d, ch, verbose=True):  # model_dict, input_channels(3)
             # (+) -> add by billy
             if isinstance(m_, Altek_Landmark):
                 for block in m_.block_parameters:
-                    LOGGER.info(f"{str(" "):>3}{str(" "):>20}{str(" "):>3}{m_.block_parameters[block]:10.0f}  {block:<45}{str(" "):<30}")  # print
+                    LOGGER.info(f"{str(' '):>3}{str(' '):>20}{str(' '):>3}{m_.block_parameters[block]:10.0f}  {block:<45}{str(' '):<30}")  # print
                     a = block
             # <- (+) add by billy
         save.extend(x % i for x in ([f] if isinstance(f, int) else f) if x != -1)  # append to savelist
