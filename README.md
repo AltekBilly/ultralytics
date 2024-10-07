@@ -91,7 +91,7 @@ save_dir = f'./runs/altek_landmark/{name}'
 ```
 
 # Label format
-```powershell
+```yaml
 [cls_index] [bbox_center_x] [bbox_center_y] [bbox_w] [bbox_h] [point_0_x] [point_0_y] [point_0_score] ... [point_i_x] [point_i_y] [point_i_score]
 └────────────────────────BBOX───────────────────────────────┘ └────────────────────────────────────landmark─────────────────────────────────────┘
 point_i_score = 2.0 # visible
