@@ -70,12 +70,12 @@ model_path = './runs/altek_landmark/[name]/weights/best.pt' # float pre-train mo
 ...
 ```
 
-# Preidct
+# Predict
 ```shell
 cd ultralytics/
-python billy_toolbox/preidct_landmark.py
+python billy_toolbox/predict_landmark.py
 ```
-preidct_landmark.py
+predict_landmark.py
 ```python
 ...
 # Load a model
