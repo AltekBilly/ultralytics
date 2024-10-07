@@ -591,7 +591,9 @@ class Keypoints(BaseTensor):
             keypoints = keypoints[None, :]
         if keypoints.shape[2] == 3:  # x, y, conf
             mask = keypoints[..., 2] < 0.5  # points with conf < 0.5 (not visible)
-            keypoints[..., :2][mask] = 0
+            # (-) -> add by billy, show invisible kpt
+            # // keypoints[..., :2][mask] = 0
+            # <- (-) add by billy
         super().__init__(keypoints, orig_shape)
         self.has_visible = self.data.shape[-1] == 3
 
