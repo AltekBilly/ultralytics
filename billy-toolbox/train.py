@@ -3,7 +3,7 @@ import os
 
 home_path = os.path.expanduser("~")
 
-date = "20241112"
+date = "20241127"
 
 
 model_dic = {
@@ -21,6 +21,22 @@ model_dic = {
         "data": "wiwynn-High_Value_Room.yaml",
         "task": "detect",
         "name": "wiwynn-High_Value_Room-" + date + "-",
+    },
+    
+    "wiwynn-GPU_pins": {
+        "model": "yolov8m.yaml", 
+        "cfg": "wiwynn-GPU_pins-cfg.yaml", 
+        "data": "wiwynn-GPU_pins.yaml",
+        "task": "detect",
+        "name": "wiwynn-GPU_pins-" + date + "-",
+    },
+    
+    "wiwynn-GPU_pins_Classification": {
+        "model": "yolov8n-cls.yaml", 
+        "cfg": "wiwynn-GPU_pins_Classification-cfg.yaml", 
+        "data": "/home/ubuntu/dataset/GPU_pins_Classification_dataset",
+        "task": "classify",
+        "name": "wiwynn-GPU_pins_Classification-" + date + "-",
     },
 }
 

@@ -58,6 +58,9 @@ from ultralytics.nn.modules import (
     ResNetLayer,
     RTDETRDecoder,
     SCDown,
+    # (+) -> add by billy
+    InterpolateModule,
+    # <- (+) add by billy
     Segment,
     WorldDetect,
     v10Detect,

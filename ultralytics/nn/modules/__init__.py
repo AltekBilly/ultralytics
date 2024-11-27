@@ -56,6 +56,9 @@ from .block import (
     RepVGGDW,
     ResNetLayer,
     SCDown,
+    # (+) -> add by billy
+    InterpolateModule,
+    # <- (+) add by billy
 )
 from .conv import (
     CBAM,
@@ -115,6 +118,9 @@ __all__ = (
     "C2f",
     "C3k2",
     "SCDown",
+    # (+) -> add by billy
+    "InterpolateModule",
+    # <- (+) add by billy
     "C2fPSA",
     "C2PSA",
     "C2fAttn",

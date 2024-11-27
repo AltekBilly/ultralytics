@@ -49,6 +49,9 @@ __all__ = (
     "Attention",
     "PSA",
     "SCDown",
+    # (+) -> add by billy
+    "InterpolateModule",
+    # <- (+) add by billy
 )
 
 
@@ -1107,3 +1110,16 @@ class SCDown(nn.Module):
     def forward(self, x):
         """Applies convolution and downsampling to the input tensor in the SCDown module."""
         return self.cv2(self.cv1(x))
+
+# (+) -> add by billy
+class InterpolateModule(nn.Module):
+    def __init__(self, size=None, scale_factor=None, mode='nearest', align_corners=None):
+        super(InterpolateModule, self).__init__()
+        self.size = size
+        self.scale_factor = scale_factor
+        self.mode = mode
+        self.align_corners = align_corners
+
+    def forward(self, x):
+        return F.interpolate(x, size=self.size, scale_factor=self.scale_factor, mode=self.mode, align_corners=self.align_corners)
+# <- (+) add by billy

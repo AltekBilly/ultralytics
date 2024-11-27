@@ -1,0 +1,17 @@
+# Train/val/test sets as 1) dir: path/to/imgs, 2) file: path/to/imgs.txt, or 3) list: [path/to/imgs1, path/to/imgs2, ..]
+path: /home/ubuntu/dataset/GPU_pins_dataset # dataset root dir
+train: train/images # train images (relative to 'path') 128 images
+val: val/images # val images (relative to 'path') 128 images
+test: # test images (optional)
+
+# Classes
+names:
+  0: pin0
+  1: pin1
+  2: pin2
+  3: pin3
+  # 4: ping 2-NG
+  # 5: ping 1-NG
+  # 6: ping 3-NG
+
+
