@@ -13,7 +13,7 @@ video_path = os.path.join(root, video_name)
 # Load a model
 model = YOLO(f'/home/ubuntu/repo/ultralytics/runs/detect/{name}/weights/best.pt') # load a custom model
 model.conf = 0.5  # 設定信心閾值 (0.0 - 1.0)
-model.iou = 0.8   # 設定 IoU 閾值 (0.0 - 1.0)
+model.iou = 0.7   # 設定 IoU 閾值 (0.0 - 1.0)
 
 
 cap = cv2.VideoCapture(video_path)

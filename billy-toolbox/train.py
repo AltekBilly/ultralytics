@@ -3,7 +3,7 @@ import os
 
 home_path = os.path.expanduser("~")
 
-date = "20241127"
+date = "20241129"
 
 
 model_dic = {
@@ -24,7 +24,7 @@ model_dic = {
     },
     
     "wiwynn-GPU_pins": {
-        "model": "yolov8m.yaml", 
+        "model": "yolov8s.yaml", 
         "cfg": "wiwynn-GPU_pins-cfg.yaml", 
         "data": "wiwynn-GPU_pins.yaml",
         "task": "detect",
