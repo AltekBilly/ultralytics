@@ -5,14 +5,20 @@ from pathlib import Path
 
 home_path = os.path.expanduser("~")
 
-folder = '/home/ubuntu/dataset/GPU_pins_dataset/val/images/captured_image_20241114_113502.png'
-name = 'wiwynn-GPU_pins-20241118-'
+folder = '/home/ubuntu/dataset/GPU_pins_dataset_LZ20241203/val/images'
+name = 'wiwynn-GPU_pins-20241205-'
 
 # Load a model
 model = YOLO(f'/home/ubuntu/repo/ultralytics/runs/detect/{name}/weights/best.pt') # load a custom model
 
 
-results = model(folder, save=True, save_txt=True, exist_ok=True, save_crop=True, name=f'predict-{name}')
+save      = True
+save_txt  = False #True
+exist_ok  = True
+save_crop = True
+max_det   = 500
+
+results = model(folder, save=save, save_txt=save_txt, exist_ok=exist_ok, save_crop=save_crop, max_det=max_det, name=f'predict-{name}')
 
 
 # Process results list

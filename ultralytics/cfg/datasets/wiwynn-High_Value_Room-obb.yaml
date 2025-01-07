@@ -1,0 +1,16 @@
+# Train/val/test sets as 1) dir: path/to/imgs, 2) file: path/to/imgs.txt, or 3) list: [path/to/imgs1, path/to/imgs2, ..]
+path: /home/ubuntu/dataset/WYMY_High_Value_Room_Video_20240816-obb # dataset root dir
+train: train/images # train images (relative to 'path')
+val: val/images # val images (relative to 'path')
+test: # test images (optional)
+
+# Classes
+names:
+  0: RDimm
+  # 1: cpu
+  # 2: empty
+  # 3: gpu
+  # 4: fpga
+  # 5: SSD_or_RDimm
+
+
